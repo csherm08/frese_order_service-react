@@ -10,6 +10,20 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  // Ensure .well-known directory is properly served for Apple Pay verification
+  async headers() {
+    return [
+      {
+        source: '/.well-known/:path*',
+        headers: [
+          {
+            key: 'Content-Type',
+            value: 'text/plain',
+          },
+        ],
+      },
+    ];
+  },
 };
 
 export default nextConfig;

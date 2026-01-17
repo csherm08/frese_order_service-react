@@ -73,7 +73,8 @@ function CheckoutForm({
             }
 
             // Create payment method with billing details
-            // Since we set all billing fields to 'never', we must provide them all here
+            // For both card and wallet payments (Apple Pay, Google Pay), we create the payment method
+            // Wallet payments are handled by PaymentElement but we still need to create the payment method
             if (!stripe.createPaymentMethod) {
                 throw new Error('Stripe instance is not properly initialized. Please check your Stripe publishable key.');
             }
@@ -150,6 +151,13 @@ function CheckoutForm({
                             email: 'never', // We collect this in our form
                             phone: 'never', // We collect this in our form
                         }
+                    }
+                }}
+                onReady={(e) => {
+                    console.log('PaymentElement ready:', e);
+                    // Log available payment methods
+                    if (e && 'availablePaymentMethods' in e) {
+                        console.log('Available payment methods:', e.availablePaymentMethods);
                     }
                 }}
             />
@@ -381,7 +389,9 @@ export default function CheckoutPage() {
                                         stripe={stripePromise}
                                         options={{
                                             clientSecret,
-                                            paymentMethodCreation: 'manual' as any, // Required when using createPaymentMethod manually
+                                            // Allow automatic payment method creation for wallet payments (Apple Pay, Google Pay)
+                                            // while still supporting manual creation for card payments
+                                            paymentMethodCreation: 'manual' as any,
                                             appearance: {
                                                 theme: 'flat',
                                                 variables: {

@@ -5,4 +5,10 @@
 [build.environment]
   NEXT_PUBLIC_API_URL = "https://frese-bakery-backend-app-504689514656.us-east1.run.app/api"
 
+# Ensure .well-known directory is served correctly for Apple Pay verification
+[[redirects]]
+  from = "/.well-known/*"
+  to = "/.well-known/:splat"
+  status = 200
+  force = false
 
