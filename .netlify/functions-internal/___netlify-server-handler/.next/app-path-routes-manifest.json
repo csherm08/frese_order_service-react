@@ -1,0 +1,14 @@
+{
+  "/favicon.ico/route": "/favicon.ico",
+  "/_not-found/page": "/_not-found",
+  "/cart/page": "/cart",
+  "/catering/page": "/catering",
+  "/checkout/page": "/checkout",
+  "/order-success/page": "/order-success",
+  "/page": "/",
+  "/order/page": "/order",
+  "/specials/page": "/specials",
+  "/unsubscribe/page": "/unsubscribe",
+  "/order/special/[id]/page": "/order/special/[id]",
+  "/menu/page": "/menu"
+}

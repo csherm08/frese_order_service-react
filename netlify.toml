@@ -1,0 +1,8 @@
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  NEXT_PUBLIC_API_URL = "https://frese-bakery-backend-app-504689514656.us-east1.run.app/api"
+
+

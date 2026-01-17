@@ -16,9 +16,9 @@ import { toast } from 'sonner';
 
 // Check if product has customization options (sizes, selections, or add-ons)
 function productNeedsModal(product: Product): boolean {
-    const hasSizes = product.product_sizes && product.product_sizes.length > 0;
-    const hasSelections = product.product_selection_values && Object.keys(product.product_selection_values).length > 0;
-    const hasAddOns = product.product_add_on_values && Object.keys(product.product_add_on_values).length > 0;
+    const hasSizes = !!(product.product_sizes && product.product_sizes.length > 0);
+    const hasSelections = !!(product.product_selection_values && Object.keys(product.product_selection_values).length > 0);
+    const hasAddOns = !!(product.product_add_on_values && Object.keys(product.product_add_on_values).length > 0);
     return hasSizes || hasSelections || hasAddOns;
 }
 
@@ -81,7 +81,7 @@ export default function MenuPage() {
             // Filter out "Special" type products, "Superbowl Special" type products (typeId 10), and "Catering" type products
             const cateringType = types.find((t: any) => t.name === 'Catering');
             const cateringId = cateringType?.id;
-            
+
             const regularProducts = data.filter((p: Product) => {
                 // Exclude "Special" type
                 if (specialId && p.typeId === specialId) {
