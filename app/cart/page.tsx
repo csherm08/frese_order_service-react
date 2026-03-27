@@ -194,9 +194,9 @@ export default function CartPage() {
                     </Button>
                 </div>
 
-                {/* Order Summary */}
+                {/* Order Summary — sticky only on lg+; mobile sticky fights scroll + header and jumps */}
                 <div className="lg:col-span-1">
-                    <Card className="sticky top-20">
+                    <Card className="lg:sticky lg:top-20">
                         <CardContent className="p-6 space-y-4">
                             <h2 className="text-2xl font-bold">Order Summary</h2>
 
