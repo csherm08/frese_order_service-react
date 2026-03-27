@@ -173,15 +173,15 @@ export default function MenuPage() {
                 {/* Products Grid */}
                 <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                     {filteredProducts.map((product) => (
-                        <Card key={product.id} className="flex flex-col hover:shadow-lg transition-shadow">
+                        <Card key={product.id} className="flex flex-col hover:shadow-lg transition-all duration-300 group overflow-hidden">
                             <CardHeader className="p-0">
                                 {product.photoUrl ? (
                                     <CachedImage
                                         src={product.photoUrl}
                                         alt={product.title}
                                         fill
-                                        containerClassName="w-full h-48 rounded-t-xl"
-                                        className="rounded-t-xl"
+                                        containerClassName="w-full h-48 rounded-t-xl overflow-hidden"
+                                        className="rounded-t-xl group-hover:scale-105 transition-transform duration-300"
                                     />
                                 ) : (
                                     <div className="w-full h-48 bg-gray-200 rounded-t-xl flex items-center justify-center">

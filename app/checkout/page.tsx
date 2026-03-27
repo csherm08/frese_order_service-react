@@ -1,26 +1,23 @@
 "use client"
 
-import { useState, useEffect } from 'react';
-import { useCart } from '@/contexts/CartContext';
-import { useRouter } from 'next/navigation';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { formatCurrency, formatDateTime } from '@/lib/utils';
-import { Loader2 } from 'lucide-react';
-import { loadStripe } from '@stripe/stripe-js';
-import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
-import { createPaymentIntent, processOrderAndPay } from '@/lib/api';
-import { toast } from 'sonner';
-import TimeslotSelector from '@/components/TimeslotSelector';
+import { useState, useEffect } from "react"
+import { useCart } from '@/contexts/CartContext'
+import { useRouter } from 'next/navigation'
+import TimeslotSelector from "@/components/TimeslotSelector"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { ShoppingBag, ArrowLeft, CheckCircle, Loader2 } from "lucide-react"
+import Link from "next/link"
+import { formatCurrency, formatDateTime } from '@/lib/utils'
+import { createPaymentIntent, processOrderAndPay } from '@/lib/api'
+import { loadStripe } from '@stripe/stripe-js'
+import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js'
+import { toast } from 'sonner'
+import type { CartItem } from "@/types/products"
 
 const stripePublishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
-
-if (!stripePublishableKey) {
-    console.error('NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY is not set!');
-}
-
 const stripePromise = stripePublishableKey ? loadStripe(stripePublishableKey) : null;
 
 function CheckoutForm({
@@ -50,14 +47,12 @@ function CheckoutForm({
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        // Validate contact info
         if (!customerName || !customerEmail || !customerPhone) {
             toast.error('Please fill in all contact information');
             return;
         }
 
         if (!stripe || !elements || !orderData) {
-            console.error('Stripe not ready:', { stripe: !!stripe, elements: !!elements, orderData: !!orderData });
             toast.error('Payment system not ready. Please try again.');
             return;
         }
@@ -72,11 +67,8 @@ function CheckoutForm({
                 return;
             }
 
-            // Create payment method with billing details
-            // For both card and wallet payments (Apple Pay, Google Pay), we create the payment method
-            // Wallet payments are handled by PaymentElement but we still need to create the payment method
             if (!stripe.createPaymentMethod) {
-                throw new Error('Stripe instance is not properly initialized. Please check your Stripe publishable key.');
+                throw new Error('Stripe instance is not properly initialized.');
             }
 
             const { error: pmError, paymentMethod } = await stripe.createPaymentMethod({
@@ -96,17 +88,10 @@ function CheckoutForm({
                 return;
             }
 
-            console.log('Payment method created:', {
-                id: paymentMethod.id,
-                type: paymentMethod.type,
-                card: paymentMethod.card,
-            });
-
-            // Build paymentIntentInfo matching the existing Angular service format exactly
             const paymentIntentInfo = {
-                amount: Math.round(total * 100), // Convert to cents
+                amount: Math.round(total * 100),
                 currency: 'usd',
-                orderId: orderData.id || null, // May be null if order not created yet
+                orderId: orderData.id || null,
                 email: customerEmail,
                 phone: customerPhone,
                 name: customerName,
@@ -116,19 +101,11 @@ function CheckoutForm({
                 },
             };
 
-            console.log('Sending paymentIntentInfo:', paymentIntentInfo);
-
-            // Backend handles everything: creates order, confirms payment intent with payment method
             await processOrderAndPay(orderData, paymentIntentInfo);
-
-            // Show confirmation FIRST - this sets step to 'confirmation' which prevents redirect
             onSuccess();
-
-            // Clear cart after confirmation page has rendered (longer delay to ensure step is set)
             setTimeout(() => {
                 clearCart();
             }, 500);
-
             toast.success('Order placed successfully!');
         } catch (error: any) {
             console.error('Payment error:', error);
@@ -147,21 +124,13 @@ function CheckoutForm({
                     },
                     fields: {
                         billingDetails: {
-                            name: 'never', // We collect this in our form
-                            email: 'never', // We collect this in our form
-                            phone: 'never', // We collect this in our form
+                            name: 'never',
+                            email: 'never',
+                            phone: 'never',
                         }
                     }
                 }}
-                onReady={(e) => {
-                    console.log('PaymentElement ready:', e);
-                    // Log available payment methods
-                    if (e && 'availablePaymentMethods' in e) {
-                        console.log('Available payment methods:', e.availablePaymentMethods);
-                    }
-                }}
             />
-
             <Button
                 type="submit"
                 disabled={!stripe || loading}
@@ -182,25 +151,27 @@ function CheckoutForm({
 }
 
 export default function CheckoutPage() {
-    const { items, total, subtotal, tax, isLoaded } = useCart();
-    const router = useRouter();
-    const [step, setStep] = useState<'time' | 'payment' | 'confirmation'>('time');
-    const [clientSecret, setClientSecret] = useState<string>('');
-    const [paymentIntentId, setPaymentIntentId] = useState<string>('');
-    const [loading, setLoading] = useState(false);
+    const { items, total, subtotal, tax, isLoaded } = useCart()
+    const router = useRouter()
+    const [step, setStep] = useState<'time' | 'payment' | 'confirmation'>('time')
+    const [selectedTimeslot, setSelectedTimeslot] = useState<any>(null)
+    const [loading, setLoading] = useState(false)
+    const [clientSecret, setClientSecret] = useState<string>('')
+    const [paymentIntentId, setPaymentIntentId] = useState<string>('')
+    const [customerName, setCustomerName] = useState('')
+    const [customerEmail, setCustomerEmail] = useState('')
+    const [customerPhone, setCustomerPhone] = useState('')
+    const [orderConfirmation, setOrderConfirmation] = useState<any>(null)
 
-    // Customer Info
-    const [customerName, setCustomerName] = useState('');
-    const [customerEmail, setCustomerEmail] = useState('');
-    const [customerPhone, setCustomerPhone] = useState('');
+    // After a successful order we clear the cart; confirm step must still render with empty items.
+    const allowEmptyCart = step === "confirmation" && orderConfirmation != null;
 
-    // Selected Timeslot
-    const [selectedTimeslot, setSelectedTimeslot] = useState<any>(null);
-
-    // Order confirmation data
-    const [orderConfirmation, setOrderConfirmation] = useState<any>(null);
-
-    // Don't redirect - let users stay on confirmation page even after cart is cleared
+    useEffect(() => {
+        if (!isLoaded) return;
+        if (items.length === 0 && !allowEmptyCart) {
+            router.replace("/cart");
+        }
+    }, [isLoaded, items.length, allowEmptyCart, router]);
 
     // Show loading while cart is being loaded from localStorage
     if (!isLoaded) {
@@ -208,60 +179,38 @@ export default function CheckoutPage() {
             <div className="flex items-center justify-center min-h-[60vh]">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             </div>
+        )
+    }
+
+    if (items.length === 0 && !allowEmptyCart) {
+        return (
+            <div className="min-h-[50vh] flex items-center justify-center text-muted-foreground text-sm">
+                Redirecting to cart…
+            </div>
         );
     }
 
-    // Allow confirmation step to render even if cart is empty (cart is cleared after order)
-    if (items.length === 0 && step !== 'confirmation') {
-        return null;
-    }
-
-    // Build order data - only available when we have all required info
-    // Match the structure expected by backend createOrderOnline: { email, name, phone, items, pickupTime, notes, status, total }
-    const orderData = selectedTimeslot && customerName && customerEmail && customerPhone ? {
-        email: customerEmail,
-        name: customerName,
-        phone: customerPhone,
-        items: items.map(item => ({
-            productId: item.productId, // Backend expects productId, not product_id
-            quantity: item.quantity,
-            price: item.price,
-            product_size_id: item.product_size_id,
-            selections: item.selections,
-            add_ons: item.add_ons,
-        })),
-        total: total, // Backend expects total in dollars, not cents
-        pickupTime: selectedTimeslot?.timestamp,
-        notes: '',
-        status: 'pending', // Will be set by backend, but include for consistency
-    } : null;
-
     const handleTimeslotSelect = async (timeslot: any) => {
-        setSelectedTimeslot(timeslot);
-        setLoading(true);
+        setSelectedTimeslot(timeslot)
+        setLoading(true)
 
         try {
-            const response = await createPaymentIntent(Math.round(total * 100));
-            console.log('Payment intent response:', response);
-            const clientSecret = response.clientSecret || response.client_secret;
-            const paymentIntentId = response.id;
-            if (!clientSecret) {
-                throw new Error('No client secret in response');
+            const response = await createPaymentIntent(Math.round(total * 100))
+            const clientSecret = response.clientSecret || response.client_secret
+            const paymentIntentId = response.id
+            if (!clientSecret || !paymentIntentId) {
+                throw new Error('Failed to create payment intent')
             }
-            if (!paymentIntentId) {
-                throw new Error('No payment intent ID in response');
-            }
-            setClientSecret(clientSecret);
-            setPaymentIntentId(paymentIntentId);
-            setStep('payment');
+            setClientSecret(clientSecret)
+            setPaymentIntentId(paymentIntentId)
+            setStep('payment')
         } catch (error: any) {
-            console.error('Failed to create payment intent:', error);
-            toast.error(error.message || 'Failed to initialize payment');
-            setLoading(false);
+            console.error('Failed to create payment intent:', error)
+            toast.error(error.message || 'Failed to initialize payment')
         } finally {
-            setLoading(false);
+            setLoading(false)
         }
-    };
+    }
 
     const handlePaymentSuccess = () => {
         setOrderConfirmation({
@@ -273,161 +222,249 @@ export default function CheckoutPage() {
             subtotal,
             tax,
             total,
-        });
-        setStep('confirmation');
-    };
+        })
+        setStep('confirmation')
+    }
 
-    const handleCustomerInfoSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        // Contact info is collected in payment step, this is just validation
-        // Payment will proceed after form submission
-    };
+    const orderData = selectedTimeslot && customerName && customerEmail && customerPhone ? {
+        email: customerEmail,
+        name: customerName,
+        phone: customerPhone,
+        items: items.map(item => ({
+            productId: item.productId,
+            quantity: item.quantity,
+            price: item.price,
+            product_size_id: item.product_size_id,
+            selections: item.selections,
+            add_ons: item.add_ons,
+        })),
+        total: total,
+        pickupTime: selectedTimeslot?.timestamp,
+        notes: '',
+        status: 'pending',
+    } : null
+
+    // Calculate item total for display
+    const getItemTotal = (item: CartItem) => {
+        let itemTotal = item.price * item.quantity
+        // Add selections costs
+        if (item.selections) {
+            Object.values(item.selections).forEach((selection: any) => {
+                if (selection.cost) {
+                    itemTotal += selection.cost * item.quantity
+                }
+            })
+        }
+        // Add add-ons costs
+        if (item.add_ons) {
+            Object.values(item.add_ons).forEach((addOnArray: any) => {
+                if (Array.isArray(addOnArray)) {
+                    addOnArray.forEach((addOn: any) => {
+                        if (addOn.cost) {
+                            itemTotal += addOn.cost * item.quantity
+                        }
+                    })
+                }
+            })
+        }
+        return itemTotal
+    }
 
     return (
-        <div className="container px-4 py-8">
-            <div className="max-w-2xl mx-auto space-y-6">
-                <h1 className="text-4xl font-bold">Checkout</h1>
+        <div className="min-h-screen bg-gray-50 py-8">
+            <div className="container mx-auto px-4 max-w-4xl">
+                {step === 'time' ? (
+                    <button onClick={() => router.back()} className="inline-flex items-center text-gray-600 hover:text-gray-900 mb-6">
+                        <ArrowLeft className="w-4 h-4 mr-2" />
+                        Back
+                    </button>
+                ) : (
+                    <button onClick={() => setStep('time')} className="inline-flex items-center text-gray-600 hover:text-gray-900 mb-6">
+                        <ArrowLeft className="w-4 h-4 mr-2" />
+                        Back to Time Selection
+                    </button>
+                )}
 
-                {/* Progress Steps */}
-                <div className="flex items-center justify-between mb-8">
-                    <div className={`flex-1 text-center ${step === 'time' ? 'text-primary font-semibold' : step === 'payment' || step === 'confirmation' ? 'text-primary' : 'text-muted-foreground'}`}>
-                        <div className={`w-8 h-8 rounded-full mx-auto mb-2 flex items-center justify-center ${step === 'time' ? 'bg-primary text-white' : step === 'payment' || step === 'confirmation' ? 'bg-primary text-white' : 'bg-gray-200'}`}>
-                            {step === 'confirmation' ? '✓' : '1'}
-                        </div>
-                        <span className="text-sm">Pickup Time</span>
-                    </div>
-                    <div className="flex-1 border-t" />
-                    <div className={`flex-1 text-center ${step === 'payment' ? 'text-primary font-semibold' : step === 'confirmation' ? 'text-primary' : 'text-muted-foreground'}`}>
-                        <div className={`w-8 h-8 rounded-full mx-auto mb-2 flex items-center justify-center ${step === 'payment' ? 'bg-primary text-white' : step === 'confirmation' ? 'bg-primary text-white' : 'bg-gray-200'}`}>
-                            {step === 'confirmation' ? '✓' : '2'}
-                        </div>
-                        <span className="text-sm">Payment</span>
-                    </div>
-                    <div className="flex-1 border-t" />
-                    <div className={`flex-1 text-center ${step === 'confirmation' ? 'text-primary font-semibold' : 'text-muted-foreground'}`}>
-                        <div className={`w-8 h-8 rounded-full mx-auto mb-2 flex items-center justify-center ${step === 'confirmation' ? 'bg-primary text-white' : 'bg-gray-200'}`}>
-                            3
-                        </div>
-                        <span className="text-sm">Confirmation</span>
-                    </div>
-                </div>
+                <h1 className="text-3xl font-bold mb-8">Checkout</h1>
 
                 {/* Step 1: Timeslot Selection */}
                 {step === 'time' && (
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Select Pickup Time</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <TimeslotSelector
-                                items={items}
-                                onSelect={handleTimeslotSelect}
-                                loading={loading}
-                            />
-                            <Button
-                                variant="outline"
-                                onClick={() => router.push('/cart')}
-                                className="w-full mt-4"
-                            >
-                                Back to Cart
-                            </Button>
-                        </CardContent>
-                    </Card>
+                    <div className="grid gap-6 md:grid-cols-3">
+                        {/* Order Summary */}
+                        <Card className="md:col-span-1 h-fit">
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2">
+                                    <ShoppingBag className="w-5 h-5" />
+                                    Order Summary
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="space-y-3">
+                                    {items.map((item) => (
+                                        <div key={`${item.productId}-${item.product_size_id || 'none'}-${JSON.stringify(item.selections)}-${JSON.stringify(item.add_ons)}`} className="flex justify-between">
+                                            <span>{item.product_name}</span>
+                                            <span>{formatCurrency(getItemTotal(item))}</span>
+                                        </div>
+                                    ))}
+                                    <hr />
+                                    <div className="flex justify-between font-bold">
+                                        <span>Total</span>
+                                        <span className="text-[#f5991c]">{formatCurrency(total)}</span>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        {/* Timeslot Selector */}
+                        <Card className="md:col-span-2">
+                            <CardHeader>
+                                <CardTitle>Select Pickup Time</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <TimeslotSelector items={items} onSelect={handleTimeslotSelect} loading={loading} />
+                            </CardContent>
+                        </Card>
+                    </div>
                 )}
 
-                {/* Step 2: Payment with Contact Info */}
+                {/* Step 2: Payment */}
                 {step === 'payment' && (
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Payment & Contact Information</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-6">
-                            {/* Contact Information Form */}
-                            <form onSubmit={handleCustomerInfoSubmit} className="space-y-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="name">Full Name *</Label>
-                                    <Input
-                                        id="name"
-                                        value={customerName}
-                                        onChange={(e) => setCustomerName(e.target.value)}
-                                        required
-                                    />
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label htmlFor="email">Email *</Label>
-                                    <Input
-                                        id="email"
-                                        type="email"
-                                        value={customerEmail}
-                                        onChange={(e) => setCustomerEmail(e.target.value)}
-                                        required
-                                    />
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label htmlFor="phone">Phone Number *</Label>
-                                    <Input
-                                        id="phone"
-                                        type="tel"
-                                        value={customerPhone}
-                                        onChange={(e) => setCustomerPhone(e.target.value)}
-                                        required
-                                    />
-                                </div>
-                            </form>
-
-                            {/* Stripe Payment Element */}
-                            <div className="border-t pt-6">
-                                <h3 className="text-lg font-semibold mb-4">Payment Details</h3>
-                                {!stripePublishableKey ? (
-                                    <div className="text-center py-8 text-destructive">
-                                        <p>Stripe is not configured. Please set NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY in your environment variables.</p>
+                    <div className="grid gap-6 md:grid-cols-3">
+                        {/* Order Summary */}
+                        <Card className="md:col-span-1 h-fit">
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2">
+                                    <ShoppingBag className="w-5 h-5" />
+                                    Order Summary
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="space-y-3">
+                                    {items.map((item) => (
+                                        <div key={`${item.productId}-${item.product_size_id || 'none'}-${JSON.stringify(item.selections)}-${JSON.stringify(item.add_ons)}`} className="flex justify-between text-sm">
+                                            <span>{item.product_name}</span>
+                                            <span>{formatCurrency(getItemTotal(item))}</span>
+                                        </div>
+                                    ))}
+                                    <hr />
+                                    <div className="space-y-2 text-sm">
+                                        <div className="flex justify-between">
+                                            <span>Subtotal</span>
+                                            <span>{formatCurrency(subtotal)}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span>Tax</span>
+                                            <span>{formatCurrency(tax)}</span>
+                                        </div>
+                                        <div className="flex justify-between font-bold text-base">
+                                            <span>Total</span>
+                                            <span className="text-[#f5991c]">{formatCurrency(total)}</span>
+                                        </div>
                                     </div>
-                                ) : clientSecret && stripePromise ? (
-                                    <Elements
-                                        stripe={stripePromise}
-                                        options={{
-                                            clientSecret,
-                                            // Allow automatic payment method creation for wallet payments (Apple Pay, Google Pay)
-                                            // while still supporting manual creation for card payments
-                                            paymentMethodCreation: 'manual' as any,
-                                            appearance: {
-                                                theme: 'flat',
-                                                variables: {
-                                                    colorPrimary: '#ffb038'
-                                                }
-                                            }
-                                        } as any}
-                                    >
-                                        <CheckoutForm
-                                            clientSecret={clientSecret}
-                                            paymentIntentId={paymentIntentId}
-                                            orderData={orderData || {}}
-                                            customerName={customerName}
-                                            customerEmail={customerEmail}
-                                            customerPhone={customerPhone}
-                                            total={total}
-                                            onSuccess={handlePaymentSuccess}
+                                    {selectedTimeslot && (
+                                        <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                                            <div className="flex items-center gap-2 text-green-700">
+                                                <CheckCircle className="w-4 h-4" />
+                                                <span className="font-medium text-sm">Pickup Selected</span>
+                                            </div>
+                                            <p className="text-sm text-green-600 mt-1">{formatDateTime(selectedTimeslot.timestamp)}</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        {/* Payment Form */}
+                        <Card className="md:col-span-2">
+                            <CardHeader>
+                                <CardTitle>Payment & Contact Information</CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-6">
+                                <form className="space-y-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="name">Full Name *</Label>
+                                        <Input
+                                            id="name"
+                                            value={customerName}
+                                            onChange={(e) => setCustomerName(e.target.value)}
+                                            required
                                         />
-                                    </Elements>
-                                ) : (
-                                    <div className="text-center py-8 text-muted-foreground">
-                                        <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
-                                        <p>Loading payment form...</p>
                                     </div>
-                                )}
-                            </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="email">Email *</Label>
+                                        <Input
+                                            id="email"
+                                            type="email"
+                                            value={customerEmail}
+                                            onChange={(e) => setCustomerEmail(e.target.value)}
+                                            required
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="phone">Phone Number *</Label>
+                                        <Input
+                                            id="phone"
+                                            type="tel"
+                                            value={customerPhone}
+                                            onChange={(e) => setCustomerPhone(e.target.value)}
+                                            required
+                                        />
+                                    </div>
+                                </form>
 
-                            <Button
-                                variant="outline"
-                                onClick={() => setStep('time')}
-                                className="w-full"
-                            >
-                                Back
-                            </Button>
-                        </CardContent>
-                    </Card>
+                                <div className="border-t pt-6">
+                                    <h3 className="text-lg font-semibold mb-4">Payment Details</h3>
+                                    {!stripePublishableKey ? (
+                                        <div className="text-center py-8 text-destructive">
+                                            <p>Stripe is not configured.</p>
+                                        </div>
+                                    ) : clientSecret && stripePromise ? (
+                                        <Elements
+                                            stripe={stripePromise}
+                                            options={{
+                                                clientSecret,
+                                                paymentMethodCreation: 'manual' as any,
+                                                appearance: {
+                                                    theme: 'flat',
+                                                    variables: {
+                                                        colorPrimary: '#f5991c'
+                                                    }
+                                                }
+                                            } as any}
+                                        >
+                                            <CheckoutForm
+                                                clientSecret={clientSecret}
+                                                paymentIntentId={paymentIntentId}
+                                                orderData={orderData || {}}
+                                                customerName={customerName}
+                                                customerEmail={customerEmail}
+                                                customerPhone={customerPhone}
+                                                total={total}
+                                                onSuccess={handlePaymentSuccess}
+                                            />
+                                        </Elements>
+                                    ) : (
+                                        <div className="text-center py-8 text-muted-foreground">
+                                            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
+                                            <p>Loading payment form...</p>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <Button
+                                    variant="outline"
+                                    onClick={() => {
+                                        setStep('time')
+                                        setClientSecret('')
+                                        setPaymentIntentId('')
+                                    }}
+                                    className="w-full"
+                                >
+                                    Back to Time Selection
+                                </Button>
+                            </CardContent>
+                        </Card>
+                    </div>
                 )}
 
                 {/* Step 3: Confirmation */}
@@ -439,26 +476,18 @@ export default function CheckoutPage() {
                         <CardContent className="space-y-6">
                             <div className="text-center py-4">
                                 <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                                    <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                    </svg>
+                                    <CheckCircle className="w-8 h-8 text-green-600" />
                                 </div>
                                 <h2 className="text-2xl font-bold mb-2">Thank you for your order!</h2>
-                                <p className="text-muted-foreground">
-                                    Your order has been placed successfully.
-                                </p>
+                                <p className="text-muted-foreground">Your order has been placed successfully.</p>
                             </div>
-
                             <div className="border-t pt-4 space-y-3">
                                 <div>
                                     <h3 className="font-semibold mb-2">Pickup Details</h3>
                                     <p className="text-sm text-muted-foreground">
-                                        {orderConfirmation.selectedTimeslot?.timestamp
-                                            ? formatDateTime(orderConfirmation.selectedTimeslot.timestamp)
-                                            : 'Time selected'}
+                                        {formatDateTime(orderConfirmation.selectedTimeslot.timestamp)}
                                     </p>
                                 </div>
-
                                 <div>
                                     <h3 className="font-semibold mb-2">Contact Information</h3>
                                     <p className="text-sm text-muted-foreground">
@@ -467,96 +496,20 @@ export default function CheckoutPage() {
                                         {orderConfirmation.customerPhone}
                                     </p>
                                 </div>
-
                                 <div>
                                     <h3 className="font-semibold mb-2">Order Total</h3>
-                                    <p className="text-lg font-bold">
-                                        {formatCurrency(orderConfirmation.total)}
-                                    </p>
+                                    <p className="text-lg font-bold">{formatCurrency(orderConfirmation.total)}</p>
                                 </div>
                             </div>
-
-                            <Button
-                                className="w-full"
-                                size="lg"
-                                onClick={() => router.push('/')}
-                            >
-                                Return to Home
+                            <Button className="w-full" size="lg" onClick={() => router.push('/menu')}>
+                                Continue Shopping
                             </Button>
-                        </CardContent>
-                    </Card>
-                )}
-
-                {/* Order Summary - Only show if not on confirmation step */}
-                {step !== 'confirmation' && items.length > 0 && (
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Order Summary</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            {items.map((item, index) => (
-                                <div key={index} className="flex justify-between text-sm">
-                                    <span>
-                                        {item.quantity}x {item.product_name}
-                                    </span>
-                                    <span>{formatCurrency(item.price * item.quantity)}</span>
-                                </div>
-                            ))}
-
-                            <div className="border-t pt-4 space-y-2">
-                                <div className="flex justify-between">
-                                    <span>Subtotal</span>
-                                    <span>{formatCurrency(subtotal)}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span>Tax</span>
-                                    <span>{formatCurrency(tax)}</span>
-                                </div>
-                                <div className="flex justify-between font-bold text-lg">
-                                    <span>Total</span>
-                                    <span>{formatCurrency(total)}</span>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-                )}
-
-                {/* Order Summary in Confirmation - Show order details from confirmation data */}
-                {step === 'confirmation' && orderConfirmation && (
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Order Summary</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            {orderConfirmation.items && orderConfirmation.items.map((item: any, index: number) => (
-                                <div key={index} className="flex justify-between text-sm">
-                                    <span>
-                                        {item.quantity}x {item.product_name || 'Item'}
-                                    </span>
-                                    <span>{formatCurrency(item.price * item.quantity)}</span>
-                                </div>
-                            ))}
-
-                            <div className="border-t pt-4 space-y-2">
-                                <div className="flex justify-between">
-                                    <span>Subtotal</span>
-                                    <span>{formatCurrency(orderConfirmation.subtotal || 0)}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span>Tax</span>
-                                    <span>{formatCurrency(orderConfirmation.tax || 0)}</span>
-                                </div>
-                                <div className="flex justify-between font-bold text-lg">
-                                    <span>Total</span>
-                                    <span>{formatCurrency(orderConfirmation.total)}</span>
-                                </div>
-                            </div>
                         </CardContent>
                     </Card>
                 )}
             </div>
         </div>
-    );
+    )
 }
 
 

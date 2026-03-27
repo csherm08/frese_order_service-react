@@ -393,41 +393,37 @@ export async function navigateToCheckout(page: Page) {
  * Select a pickup timeslot
  */
 export async function selectPickupTimeslot(page: Page) {
-    // Wait for timeslot selector section to appear
-    await page.waitForSelector('text=Select Pickup Date', { timeout: 15000 });
+    // TimeslotSelector: h3 "Pickup Date" / "Pickup Time"; checkout card title is "Select Pickup Time"
+    const timeslotReady = page
+        .locator('h3:has-text("Pickup Date")')
+        .or(page.getByText('Select Pickup Time', { exact: true }));
+    await timeslotReady.first().waitFor({ state: 'visible', timeout: 20000 });
 
     // Wait for loading to complete
     try {
         const spinner = page.locator('svg.animate-spin');
-        if (await spinner.count() > 0) {
+        if ((await spinner.count()) > 0) {
             await spinner.first().waitFor({ state: 'hidden', timeout: 30000 });
         }
-    } catch (e) {
-        // Spinner might not exist, that's fine
+    } catch {
+        // Spinner might not exist
     }
 
-    // Wait for content to load
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(1500);
 
-    // Look for time buttons
-    let timeButtons = page.locator('button').filter({ hasText: /AM|PM/ });
+    // Look for time buttons (12h format from TimeslotSelector)
+    let timeButtons = page.locator('button').filter({ hasText: /\d{1,2}:\d{2}\s*(AM|PM)/i });
 
-    // If no time buttons found, try selecting a date first
-    if (await timeButtons.count() === 0) {
-        const dateButtons = page.locator('h3:has-text("Select Pickup Date")').locator('..').locator('button');
-        const dateButtonCount = await dateButtons.count();
-
-        if (dateButtonCount > 0) {
+    if ((await timeButtons.count()) === 0) {
+        const dateButtons = page.locator('h3:has-text("Pickup Date")').locator('..').locator('button');
+        if ((await dateButtons.count()) > 0) {
             await dateButtons.first().click();
             await page.waitForTimeout(1500);
-
-            // Now look for time buttons again
-            timeButtons = page.locator('button').filter({ hasText: /AM|PM/ });
+            timeButtons = page.locator('button').filter({ hasText: /\d{1,2}:\d{2}\s*(AM|PM)/i });
         }
     }
 
-    // Wait for time buttons to be visible
-    if (await timeButtons.count() === 0) {
+    if ((await timeButtons.count()) === 0) {
         await page.screenshot({ path: 'test-results/timeslot-selector-debug.png', fullPage: true });
         throw new Error('No time slot buttons found. Check screenshot: test-results/timeslot-selector-debug.png');
     }
@@ -435,13 +431,12 @@ export async function selectPickupTimeslot(page: Page) {
     await timeButtons.first().waitFor({ state: 'visible', timeout: 10000 });
     await timeButtons.first().click();
 
-    // Wait for confirm button to appear
-    const confirmButton = page.locator('button:has-text("Confirm Pickup")');
+    // Confirm shows "EEE, MMM d at h:mm a" (not "Confirm Pickup")
+    const confirmButton = page.locator('button').filter({ hasText: / at \d{1,2}:\d{2}/ });
     await confirmButton.waitFor({ state: 'visible', timeout: 10000 });
     await confirmButton.click();
 
-    // Wait for payment step to appear
-    await page.waitForSelector('text=Payment & Contact Information', { timeout: 15000 });
+    await page.waitForSelector('text=Payment & Contact Information', { timeout: 20000 });
 }
 
 /**

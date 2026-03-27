@@ -12,6 +12,11 @@
 
 # testing
 /coverage
+/playwright-report/
+/test-results/
+
+# netlify local build output (do not commit)
+/.netlify/
 
 # next.js
 /.next/

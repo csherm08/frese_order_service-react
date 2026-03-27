@@ -1,5 +1,19 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://frese-bakery-backend-app-504689514656.us-east1.run.app/api";
 
+export type StripePublicConfig = {
+    stripeSecretKeyMode: "test" | "live" | "unset" | "unknown";
+    clientShouldUsePublishable: "pk_test" | "pk_live" | null;
+};
+
+/** Backend Stripe mode (from server secret key prefix). Pair with client pk_test / pk_live. */
+export async function fetchStripePublicConfig(): Promise<StripePublicConfig> {
+    const response = await fetch(`${API_URL}/stripe/public-config`);
+    if (!response.ok) {
+        throw new Error(`Stripe public config failed: ${response.status}`);
+    }
+    return response.json();
+}
+
 export async function fetchProducts() {
     // Match existing frontend - no query params, backend defaults to filtering sold out items
     const response = await fetch(`${API_URL}/activeProductsAndSizesIncludingSpecials`);
@@ -46,6 +60,25 @@ export async function createPaymentIntent(amount: number) {
     }
 
     const paymentIntent = await response.json();
+    const publishable = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+    if (
+        publishable &&
+        typeof paymentIntent.livemode === 'boolean'
+    ) {
+        const usingTestPk =
+            publishable.startsWith('pk_test_');
+        const intentIsLive = paymentIntent.livemode === true;
+        // Must pair: test intent (livemode false) + pk_test, OR live intent + pk_live
+        if (usingTestPk === intentIsLive) {
+            throw new Error(
+                `Stripe mode mismatch: the API created a ${
+                    intentIsLive ? 'live' : 'test'
+                } PaymentIntent, but NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY is ${
+                    usingTestPk ? 'test (pk_test_…)' : 'live (pk_live_…)'
+                }. For local development use sk_test on the server with pk_test in this app.`
+            );
+        }
+    }
     // Stripe returns client_secret, but we need clientSecret for consistency
     return {
         clientSecret: paymentIntent.client_secret || paymentIntent.clientSecret,

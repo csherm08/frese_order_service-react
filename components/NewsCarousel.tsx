@@ -1,193 +1,97 @@
 "use client"
 
-import { useState, useEffect, useCallback } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { useState, useEffect } from "react"
+import { Card, CardContent } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { ChevronLeft, ChevronRight } from "lucide-react"
+import Image from "next/image"
 
-// Mock data - will eventually come from API/admin portal
-const mockNewsEvents = [
+const newsItems = [
     {
-        id: 1,
-        title: "Thursday Dinner Specials Are Back!",
-        description: "Join us every Thursday for our famous dinner specials. This week: Chicken Parm served over baked ziti!",
-        imageUrl: "https://storage.googleapis.com/frese-product-images/chicken-parm.jpg",
-        date: "2025-12-04",
-        type: "event" as const,
+        title: "Thursday Dinner Special",
+        description: "Join us every Thursday for our famous fried chicken dinner — feeds the whole family!",
+        image: "/freses_front.jpg",
+        highlight: true,
     },
     {
-        id: 2,
-        title: "Holiday Hours",
-        description: "We'll be closed Christmas Day and New Year's Day. Order ahead for your holiday gatherings!",
-        imageUrl: "https://storage.googleapis.com/frese-product-images/holiday.jpg",
-        date: "2025-12-20",
-        type: "news" as const,
+        title: "Holiday Pre-Orders Open",
+        description: "Order your holiday pies, breads, and party platters early to guarantee availability.",
+        image: "/freses_front.jpg",
+        highlight: false,
     },
     {
-        id: 3,
-        title: "New Cinnamon Bread Recipe",
-        description: "We've perfected our cinnamon bread recipe - come try the new and improved version!",
-        imageUrl: "https://storage.googleapis.com/frese-product-images/cinnamon.jpg",
-        date: "2025-11-28",
-        type: "news" as const,
-    },
-    {
-        id: 4,
         title: "Catering Available",
-        description: "Planning a party or event? We offer full catering services for any occasion.",
-        imageUrl: "https://storage.googleapis.com/frese-product-images/catering.jpg",
-        date: "2025-11-15",
-        type: "news" as const,
+        description: "Let us cater your next event. From small gatherings to large parties, we've got you covered.",
+        image: "/freses_front.jpg",
+        highlight: false,
     },
-];
-
-interface NewsEvent {
-    id: number;
-    title: string;
-    description: string;
-    imageUrl: string;
-    date: string;
-    type: 'news' | 'event';
-}
+]
 
 export default function NewsCarousel() {
-    const [currentIndex, setCurrentIndex] = useState(0);
-    const [isAutoPlaying, setIsAutoPlaying] = useState(true);
-    const items = mockNewsEvents;
+    const [currentIndex, setCurrentIndex] = useState(0)
 
-    const nextSlide = useCallback(() => {
-        setCurrentIndex((prev) => (prev + 1) % items.length);
-    }, [items.length]);
-
-    const prevSlide = useCallback(() => {
-        setCurrentIndex((prev) => (prev - 1 + items.length) % items.length);
-    }, [items.length]);
-
-    // Auto-advance carousel
     useEffect(() => {
-        if (!isAutoPlaying) return;
-        
-        const interval = setInterval(nextSlide, 5000);
-        return () => clearInterval(interval);
-    }, [isAutoPlaying, nextSlide]);
+        const timer = setInterval(() => {
+            setCurrentIndex((prev) => (prev + 1) % newsItems.length)
+        }, 5000)
+        return () => clearInterval(timer)
+    }, [])
 
-    const formatDate = (dateStr: string) => {
-        return new Date(dateStr).toLocaleDateString('en-US', {
-            month: 'long',
-            day: 'numeric',
-            year: 'numeric',
-        });
-    };
+    const goToPrevious = () => {
+        setCurrentIndex((prev) => (prev - 1 + newsItems.length) % newsItems.length)
+    }
 
-    if (items.length === 0) return null;
+    const goToNext = () => {
+        setCurrentIndex((prev) => (prev + 1) % newsItems.length)
+    }
+
+    const currentItem = newsItems[currentIndex]
 
     return (
-        <section className="py-16 bg-gradient-to-b from-white to-orange-50">
-            <div className="container px-4">
-                <div className="text-center space-y-4 mb-10">
-                    <h2 className="text-3xl md:text-4xl font-bold">News & Events</h2>
-                    <p className="text-lg text-muted-foreground">Stay updated with what's happening at Frese's</p>
+        <section className="py-8 bg-gray-200">
+            <div className="container mx-auto px-4">
+                <div className="flex items-center justify-center gap-4">
+                    <Button variant="ghost" size="icon" onClick={goToPrevious} className="text-gray-700 hover:bg-gray-400 shrink-0">
+                        <ChevronLeft className="h-5 w-5" />
+                    </Button>
+
+                    <Card className="bg-white border-none shadow-lg max-w-3xl w-full overflow-hidden">
+                        <CardContent className="p-0">
+                            <div className="flex flex-col sm:flex-row items-center">
+                                {currentItem.image && (
+                                    <div className="relative w-full sm:w-48 h-40 sm:h-32 shrink-0">
+                                        <Image
+                                            src={currentItem.image || "/placeholder.svg"}
+                                            alt={currentItem.title}
+                                            fill
+                                            className="object-cover"
+                                        />
+                                    </div>
+                                )}
+                                <div className="p-6 text-center sm:text-left flex-1">
+                                    <h3 className="text-xl font-bold mb-2 text-gray-900">{currentItem.title}</h3>
+                                    <p className="text-gray-600">{currentItem.description}</p>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <Button variant="ghost" size="icon" onClick={goToNext} className="text-gray-700 hover:bg-gray-200 shrink-0">
+                        <ChevronRight className="h-5 w-5" />
+                    </Button>
                 </div>
 
-                <div 
-                    className="relative max-w-4xl mx-auto"
-                    onMouseEnter={() => setIsAutoPlaying(false)}
-                    onMouseLeave={() => setIsAutoPlaying(true)}
-                >
-                    {/* Main Carousel */}
-                    <div className="overflow-hidden rounded-2xl">
-                        <div 
-                            className="flex transition-transform duration-500 ease-out"
-                            style={{ transform: `translateX(-${currentIndex * 100}%)` }}
-                        >
-                            {items.map((item) => (
-                                <div key={item.id} className="w-full flex-shrink-0">
-                                    <Card className="border-0 shadow-xl overflow-hidden">
-                                        {/* Image */}
-                                        <div className="relative h-64 md:h-80 bg-gradient-to-br from-orange-100 to-amber-100">
-                                            {item.imageUrl ? (
-                                                <div 
-                                                    className="absolute inset-0 bg-cover bg-center"
-                                                    style={{ 
-                                                        backgroundImage: `url(${item.imageUrl})`,
-                                                    }}
-                                                >
-                                                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                                                </div>
-                                            ) : (
-                                                <div className="absolute inset-0 flex items-center justify-center">
-                                                    <Calendar className="h-20 w-20 text-orange-300" />
-                                                </div>
-                                            )}
-                                            
-                                            {/* Type Badge */}
-                                            <div className="absolute top-4 left-4">
-                                                <span className={cn(
-                                                    "px-3 py-1 rounded-full text-sm font-medium",
-                                                    item.type === 'event' 
-                                                        ? "bg-orange-500 text-white"
-                                                        : "bg-blue-500 text-white"
-                                                )}>
-                                                    {item.type === 'event' ? 'Event' : 'News'}
-                                                </span>
-                                            </div>
-                                        </div>
-
-                                        {/* Content */}
-                                        <CardContent className="p-6 space-y-3">
-                                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                                <Calendar className="h-4 w-4" />
-                                                <span>{formatDate(item.date)}</span>
-                                            </div>
-                                            <h3 className="text-2xl font-bold">{item.title}</h3>
-                                            <p className="text-muted-foreground text-lg">
-                                                {item.description}
-                                            </p>
-                                        </CardContent>
-                                    </Card>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Navigation Arrows */}
-                    <Button
-                        variant="outline"
-                        size="icon"
-                        className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 md:-translate-x-6 h-12 w-12 rounded-full bg-white shadow-lg hover:bg-gray-100 z-10"
-                        onClick={prevSlide}
-                    >
-                        <ChevronLeft className="h-6 w-6" />
-                    </Button>
-
-                    <Button
-                        variant="outline"
-                        size="icon"
-                        className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 md:translate-x-6 h-12 w-12 rounded-full bg-white shadow-lg hover:bg-gray-100 z-10"
-                        onClick={nextSlide}
-                    >
-                        <ChevronRight className="h-6 w-6" />
-                    </Button>
-
-                    {/* Dots Indicator */}
-                    <div className="flex justify-center gap-2 mt-6">
-                        {items.map((_, index) => (
-                            <button
-                                key={index}
-                                className={cn(
-                                    "w-3 h-3 rounded-full transition-all duration-300",
-                                    index === currentIndex 
-                                        ? "bg-orange-500 w-8" 
-                                        : "bg-gray-300 hover:bg-gray-400"
-                                )}
-                                onClick={() => setCurrentIndex(index)}
-                            />
-                        ))}
-                    </div>
+                <div className="flex justify-center gap-2 mt-4">
+                    {newsItems.map((_, index) => (
+                        <button
+                            key={index}
+                            onClick={() => setCurrentIndex(index)}
+                            className={`w-2 h-2 rounded-full transition-colors ${index === currentIndex ? "bg-gray-700" : "bg-gray-400"
+                                }`}
+                        />
+                    ))}
                 </div>
             </div>
         </section>
-    );
+    )
 }
-
