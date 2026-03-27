@@ -76,12 +76,11 @@ export default function HomePage() {
       <section className="relative py-24 md:py-32 overflow-hidden">
         <div className="absolute inset-0">
           <Image
-            src="https://scontent-lga3-3.xx.fbcdn.net/v/t39.30808-6/481084971_1187392003387702_8115223362616239962_n.jpg?_nc_cat=110&ccb=1-7&_nc_sid=cc71e4&_nc_ohc=U3STPO1xXYAQ7kNvwHH1kLQ&_nc_oc=Adm2akFAu1HvAHXo07m15cR1JhOnN_URcKAk83VKTEmnAZzCmlzJPaU9KQvnXr4IzYo&_nc_zt=23&_nc_ht=scontent-lga3-3.xx&_nc_gid=Aav9VXp1uIEBIWu3JH5xHg&oh=00_Afq6s0bVpS9Li_OGnctbl-0Qmms2e0LLE6uMxaHVbP2H3g&oe=6970DD4A"
+            src="/freses_front.jpg"
             alt="Frese's Bakery"
             fill
             className="object-cover"
             priority
-            unoptimized
           />
           <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-black/60" />
         </div>
