@@ -9,7 +9,7 @@ import { Plus, Loader2, Calendar, ArrowLeft, ShoppingCart } from 'lucide-react';
 import { fetchSpecials } from '@/lib/api';
 import { Special } from '@/types/special';
 import { Product, CartItem } from '@/types/products';
-import { formatCurrency, formatSpecialDateRange } from '@/lib/utils';
+import { cn, formatCurrency, formatSpecialDateRange } from '@/lib/utils';
 import ProductModal from '@/components/ProductModal';
 import CachedImage from '@/components/CachedImage';
 import Link from 'next/link';
@@ -182,7 +182,14 @@ export default function SpecialOrderPage() {
     const cartItemCount = items.reduce((sum, item) => sum + item.quantity, 0);
 
     return (
-        <div className="container px-4 py-8">
+        <div
+            className={cn(
+                'container px-4 pt-8',
+                cartItemCount > 0
+                    ? 'pb-[calc(7rem+env(safe-area-inset-bottom,0px))] md:pb-8'
+                    : 'pb-8'
+            )}
+        >
             <div className="space-y-6">
                 {/* Back Button & Cart */}
                 <div className="flex items-center justify-between">

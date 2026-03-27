@@ -9,7 +9,7 @@ import Link from 'next/link';
 import { useCart } from '@/contexts/CartContext';
 import { fetchProducts, fetchProductTypes } from '@/lib/api';
 import { Product, CartItem } from '@/types/products';
-import { formatCurrency } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
 import ProductModal from '@/components/ProductModal';
 import CachedImage from '@/components/CachedImage';
 import { toast } from 'sonner';
@@ -120,7 +120,15 @@ export default function MenuPage() {
     }
 
     return (
-        <div className="container px-4 py-8">
+        <div
+            className={cn(
+                'container px-4 pt-8',
+                // Mobile fixed “View Cart” bar (h-14 + bottom-4): keep last row tappable + home indicator
+                cartItemCount > 0
+                    ? 'pb-[calc(7rem+env(safe-area-inset-bottom,0px))] md:pb-8'
+                    : 'pb-8'
+            )}
+        >
             <div className="space-y-6">
                 {/* Back Button & Cart */}
                 <div className="flex items-center justify-between">
