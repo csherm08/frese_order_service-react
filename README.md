@@ -73,7 +73,27 @@ Products use the **`Plug Power`** type in the API (`types.name`). The main site 
 | `NEXT_PUBLIC_ORDER_SITE` | unset or `main` | `plugpower` |
 | `NEXT_PUBLIC_SITE_TITLE` | optional (default `Frese's Bakery`) | e.g. `Frese's — Plug Power` |
 
-Backend: run migration `20260327120000_add_plug_power_type`, then add real products in admin (or `npm run test:seed:plug-power` against **test** DB only).
+**Netlify — two sites, one repo**  
+Add a second Netlify site with the same repo/branch. Shared vars live in `netlify.toml` (`NEXT_PUBLIC_API_URL`, Stripe, etc.); override per site in the UI only if needed.
+
+**Storefront mode** (how the build picks main vs Plug Power):
+
+1. **Automatic:** If `NEXT_PUBLIC_ORDER_SITE` is **not** set in the UI/toml, `scripts/netlify-build.cjs` uses `NETLIFY_SITE_NAME`: names containing `plugpower`, `plug-power`, or `plug_power` → Plug Power + default title; otherwise main bakery + default title.
+2. **Manual:** Set `NEXT_PUBLIC_ORDER_SITE` and optional `NEXT_PUBLIC_SITE_TITLE` in **Site configuration → Environment variables** (overrides inference).
+
+Deploy and open `/menu`: Plug Power builds show **only** products of type **Plug Power**.
+
+**Adding Plug Power products**  
+The migration does **not** create catalog items—only the type row.
+
+- **Admin:** create or edit a product and set its **type** to **Plug Power** (exact name; it must match `types.name` in the API).
+- **Sample data (optional):** from `frese_backend`, against **test** DB: `npm run test:seed:plug-power`. For **production**, run only with Cloud SQL proxy to the prod DB and `NODE_ENV=production` (see `knexfile.js` + `scripts/seed-plug-power-products.js`); delete or replace sample titles in admin afterward.
+
+Backend: run migration `20260327120000_add_plug_power_type` before products can use the type.
+
+### Deploy
+
+Production deploys are triggered by merging pull requests into `main` (Netlify).
 
 ### Development
 

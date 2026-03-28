@@ -1,3 +1,9 @@
+# Two Netlify sites can use this repo on the same branch:
+# - Shared: API_URL + Stripe (below). Optional: override per site in Netlify UI.
+# - Storefront mode: set NEXT_PUBLIC_ORDER_SITE + NEXT_PUBLIC_SITE_TITLE in the UI,
+#   OR name the site so scripts/netlify-build.cjs can infer (Plug Power if the site
+#   name contains plugpower / plug-power / plug_power; otherwise main + default titles).
+
 [build]
   command = "npm run build"
   publish = ".next"

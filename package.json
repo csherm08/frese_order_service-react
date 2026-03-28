@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev -p 8100",
-    "build": "next build",
+    "build": "node scripts/netlify-build.cjs",
     "start": "next start -p 8100",
     "lint": "next lint",
     "deploy": "netlify deploy --prod",
