@@ -75,6 +75,10 @@ Products use the **`Plug Power`** type in the API (`types.name`). The main site 
 
 Backend: run migration `20260327120000_add_plug_power_type`, then add real products in admin (or `npm run test:seed:plug-power` against **test** DB only).
 
+### Deploy
+
+Production deploys are triggered by merging pull requests into `main` (Netlify).
+
 ### Development
 
 ```bash
