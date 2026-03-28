@@ -1,8 +1,16 @@
+# Two production sites are supported from this repo (same branch):
+# - Site A (main storefront): rely on defaults below for ORDER_SITE + SITE_TITLE.
+# - Site B (Plug Power): in that Netlify site only, add Environment variables that
+#   override just NEXT_PUBLIC_ORDER_SITE=plugpower and NEXT_PUBLIC_SITE_TITLE=…;
+#   UI overrides win; API_URL / Stripe stay as below unless you set them per site.
+
 [build]
   command = "npm run build"
   publish = ".next"
 
 [build.environment]
+  NEXT_PUBLIC_ORDER_SITE = "main"
+  NEXT_PUBLIC_SITE_TITLE = "Frese's Bakery"
   NEXT_PUBLIC_API_URL = "https://frese-bakery-backend-app-staging-eqjx4stexa-ue.a.run.app/api"
   NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY = "pk_test_51KasQqEZvpspKOfSlXnGLRy8IxkOOIZfo5bSREuWGPiK4HCkRyPaSy3m6TqFll4shlG3czSvOiE6eeUEUBG4Ueat00nSgYii4r"
 
