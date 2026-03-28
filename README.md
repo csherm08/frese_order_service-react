@@ -73,11 +73,15 @@ Products use the **`Plug Power`** type in the API (`types.name`). The main site 
 | `NEXT_PUBLIC_ORDER_SITE` | unset or `main` | `plugpower` |
 | `NEXT_PUBLIC_SITE_TITLE` | optional (default `Frese's Bakery`) | e.g. `Frese's — Plug Power` |
 
-**Netlify — second storefront (Plug Power only)**  
-Use a **separate Netlify site** (same repo/branch as production) or a dedicated branch; the build must bake in `NEXT_PUBLIC_*` at build time.
+**Netlify — two sites, one repo**  
+Add a second Netlify site with the same repo/branch. Shared vars live in `netlify.toml` (`NEXT_PUBLIC_API_URL`, Stripe, etc.); override per site in the UI only if needed.
 
-1. **Site configuration → Environment variables** (Production context): set `NEXT_PUBLIC_ORDER_SITE` = `plugpower`, optional `NEXT_PUBLIC_SITE_TITLE`, and the same `NEXT_PUBLIC_API_URL` / Stripe keys as the main site (unless you point at staging).
-2. **Trigger a deploy** (Deploys → Trigger deploy). Open `/menu`: you should see **only** products whose admin **type** is **Plug Power**. An **empty menu** usually means the type exists but **no products** use it yet (filter is working).
+**Storefront mode** (how the build picks main vs Plug Power):
+
+1. **Automatic:** If `NEXT_PUBLIC_ORDER_SITE` is **not** set in the UI/toml, `scripts/netlify-build.cjs` uses `NETLIFY_SITE_NAME`: names containing `plugpower`, `plug-power`, or `plug_power` → Plug Power + default title; otherwise main bakery + default title.
+2. **Manual:** Set `NEXT_PUBLIC_ORDER_SITE` and optional `NEXT_PUBLIC_SITE_TITLE` in **Site configuration → Environment variables** (overrides inference).
+
+Deploy and open `/menu`: Plug Power builds show **only** products of type **Plug Power**.
 
 **Adding Plug Power products**  
 The migration does **not** create catalog items—only the type row.
