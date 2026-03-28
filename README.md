@@ -64,6 +64,17 @@ NEXT_PUBLIC_API_URL=https://frese-bakery-backend-app-504689514656.us-east1.run.a
 NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=your_stripe_publishable_key
 ```
 
+**Plug Power (second location) — same app, different catalog**
+
+Products use the **`Plug Power`** type in the API (`types.name`). The main site build **hides** that type; a second deploy uses the same endpoints but filters to **only** Plug Power:
+
+| Variable | Main bakery | Plug Power staging |
+|----------|-------------|--------------------|
+| `NEXT_PUBLIC_ORDER_SITE` | unset or `main` | `plugpower` |
+| `NEXT_PUBLIC_SITE_TITLE` | optional (default `Frese's Bakery`) | e.g. `Frese's — Plug Power` |
+
+Backend: run migration `20260327120000_add_plug_power_type`, then add real products in admin (or `npm run test:seed:plug-power` against **test** DB only).
+
 ### Development
 
 ```bash
@@ -113,6 +124,8 @@ frese_order_service-react/
 │   └── CartContext.tsx   # Shopping cart state
 ├── lib/                  # Utilities
 │   ├── api.ts           # API client
+│   ├── catalogFilter.ts # Main vs Plug Power product filtering
+│   ├── siteConfig.ts    # NEXT_PUBLIC_ORDER_SITE / site title
 │   └── utils.ts         # Helper functions
 ├── types/               # TypeScript types
 │   ├── products.ts

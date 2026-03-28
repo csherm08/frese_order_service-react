@@ -9,6 +9,7 @@ import { Trash2, Plus, Minus, ShoppingBag, Sparkles, ChefHat } from 'lucide-reac
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import CachedImage from '@/components/CachedImage';
+import { getOrderSiteMode } from '@/lib/siteConfig';
 
 // Calculate item cost including selections and add-ons
 function getItemCost(item: any): number {
@@ -42,6 +43,7 @@ function getItemCost(item: any): number {
 export default function CartPage() {
     const { items, removeItem, updateQuantity, subtotal, tax, total, clearCart, cartMode } = useCart();
     const router = useRouter();
+    const siteMode = getOrderSiteMode();
 
     // Determine where "Continue Shopping" should link to
     const continueShoppingLink = cartMode?.type === 'special'
@@ -83,7 +85,7 @@ export default function CartPage() {
                         ) : (
                             <>
                                 <ChefHat className="h-3 w-3 mr-1 inline" />
-                                Regular Menu
+                                {siteMode === 'plugpower' ? 'Plug Power' : 'Regular Menu'}
                             </>
                         )}
                     </Badge>

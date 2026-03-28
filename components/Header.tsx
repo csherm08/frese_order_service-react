@@ -5,10 +5,13 @@ import { ShoppingCart, Menu } from 'lucide-react';
 import { useCart } from '@/contexts/CartContext';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
+import { getOrderSiteMode, getPublicSiteTitle } from '@/lib/siteConfig';
 
 export default function Header() {
     const { items } = useCart();
     const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
+    const siteMode = getOrderSiteMode();
+    const siteTitle = getPublicSiteTitle();
 
     return (
         <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -16,7 +19,7 @@ export default function Header() {
                 <div className="flex items-center gap-6">
                     <Link href="/" className="flex items-center space-x-2">
                         <div className="text-2xl font-bold text-primary">
-                            Frese's Bakery
+                            {siteTitle}
                         </div>
                     </Link>
 
@@ -29,9 +32,11 @@ export default function Header() {
                                 Order Now
                             </Button>
                         </Link>
-                        <Link href="/catering" className="text-sm font-medium transition-colors hover:text-primary">
-                            Catering
-                        </Link>
+                        {siteMode === 'main' && (
+                            <Link href="/catering" className="text-sm font-medium transition-colors hover:text-primary">
+                                Catering
+                            </Link>
+                        )}
                     </nav>
                 </div>
 

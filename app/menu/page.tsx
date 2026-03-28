@@ -9,6 +9,8 @@ import Link from 'next/link';
 import { useCart } from '@/contexts/CartContext';
 import { fetchProducts, fetchProductTypes } from '@/lib/api';
 import { Product, CartItem } from '@/types/products';
+import { filterProductsForOrderSite } from '@/lib/catalogFilter';
+import { getOrderSiteMode } from '@/lib/siteConfig';
 import { cn, formatCurrency } from '@/lib/utils';
 import ProductModal from '@/components/ProductModal';
 import CachedImage from '@/components/CachedImage';
@@ -27,10 +29,10 @@ export default function MenuPage() {
     const [loading, setLoading] = useState(true);
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
     const [filter, setFilter] = useState<string>('all');
-    const [specialTypeId, setSpecialTypeId] = useState<number | null>(null);
     const [productTypes, setProductTypes] = useState<any[]>([]);
     const { items, addItem } = useCart();
     const cartItemCount = items.reduce((sum, item) => sum + item.quantity, 0);
+    const siteMode = getOrderSiteMode();
 
     // Add simple product directly to cart without modal
     const addSimpleProduct = (product: Product) => {
@@ -67,36 +69,12 @@ export default function MenuPage() {
 
     async function loadProducts() {
         try {
-            // Fetch product types first to get the "Special" typeId and category names
             const types = await fetchProductTypes();
             setProductTypes(types);
 
-            const specialType = types.find((t: any) => t.name === 'Special');
-            const specialId = specialType?.id;
-            setSpecialTypeId(specialId);
-
-            // Fetch all products
             const data = await fetchProducts();
-
-            // Filter out "Special" type products, "Superbowl Special" type products (typeId 10), and "Catering" type products
-            const cateringType = types.find((t: any) => t.name === 'Catering');
-            const cateringId = cateringType?.id;
-
-            const regularProducts = data.filter((p: Product) => {
-                // Exclude "Special" type
-                if (specialId && p.typeId === specialId) {
-                    return false;
-                }
-                // Exclude "Superbowl Special" type (typeId 10)
-                if (p.typeId === 10) {
-                    return false;
-                }
-                // Exclude "Catering" type
-                if (cateringId && p.typeId === cateringId) {
-                    return false;
-                }
-                return true;
-            });
+            const siteMode = getOrderSiteMode();
+            const regularProducts = filterProductsForOrderSite(data, types, siteMode);
 
             setProducts(regularProducts);
         } catch (error) {
@@ -150,9 +128,13 @@ export default function MenuPage() {
                 </div>
 
                 <div className="space-y-2">
-                    <h1 className="text-4xl font-bold">Regular Menu</h1>
+                    <h1 className="text-4xl font-bold">
+                        {siteMode === 'plugpower' ? 'Plug Power Menu' : 'Regular Menu'}
+                    </h1>
                     <p className="text-lg text-muted-foreground">
-                        Fresh baked goods and more, made daily
+                        {siteMode === 'plugpower'
+                            ? 'Order for pickup at our Plug Power location.'
+                            : 'Fresh baked goods and more, made daily'}
                     </p>
                 </div>
 

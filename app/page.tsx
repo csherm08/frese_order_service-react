@@ -8,6 +8,8 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Phone, MapPin, Clock, Quote, Loader2 } from "lucide-react"
 import NewsCarousel from "@/components/NewsCarousel"
 import { fetchProducts, fetchProductTypes } from "@/lib/api"
+import { filterProductsForOrderSite } from "@/lib/catalogFilter"
+import { getOrderSiteMode } from "@/lib/siteConfig"
 import { Product } from "@/types/products"
 
 export default function HomePage() {
@@ -17,32 +19,10 @@ export default function HomePage() {
   useEffect(() => {
     async function loadProducts() {
       try {
-        // Fetch product types first to filter out Specials and Catering
         const types = await fetchProductTypes()
-        const specialType = types.find((t: any) => t.name === 'Special')
-        const specialId = specialType?.id
-        const cateringType = types.find((t: any) => t.name === 'Catering')
-        const cateringId = cateringType?.id
-
-        // Fetch all products
         const data = await fetchProducts()
-
-        // Filter out Special, Superbowl Special (typeId 10), and Catering types
-        const regularProducts = data.filter((p: Product) => {
-          // Exclude "Special" type
-          if (specialId && p.typeId === specialId) {
-            return false
-          }
-          // Exclude "Superbowl Special" type (typeId 10)
-          if (p.typeId === 10) {
-            return false
-          }
-          // Exclude "Catering" type
-          if (cateringId && p.typeId === cateringId) {
-            return false
-          }
-          return true
-        })
+        const siteMode = getOrderSiteMode()
+        const regularProducts = filterProductsForOrderSite(data, types, siteMode)
 
         // Try to get products with photos first, fallback to products without photos
         let featuredProducts = regularProducts.filter((p: Product) => p.photoUrl).slice(0, 4)
