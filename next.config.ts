@@ -6,7 +6,7 @@ const nextConfig: NextConfig = {
       {
         protocol: 'https',
         hostname: 'storage.googleapis.com',
-        pathname: '/frese-product-images/**',
+        pathname: '/**',
       },
     ],
   },

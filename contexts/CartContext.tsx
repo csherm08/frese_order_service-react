@@ -4,18 +4,25 @@ import React, { createContext, useContext, useState, useEffect, useMemo } from '
 import { CartItem } from '@/types/products';
 import { findMatchingItemIndex } from '@/lib/cartUtils';
 import { fetchProductTypes } from '@/lib/api';
+import { canAddQuantityForProduct, maxQuantityForCartLine, remainingBeforeAdd } from '@/lib/stockUtils';
 
 // Cart can be in 'regular' mode (normal menu) or 'special' mode (ordering from a special)
 type CartMode = { type: 'regular' } | { type: 'special'; specialId: number; specialName: string };
 
+export type AddItemResult =
+    | { ok: true }
+    | { ok: false; reason: 'mode_conflict' }
+    | { ok: false; reason: 'insufficient_stock'; remaining: number };
+
 interface CartContextType {
     items: CartItem[];
     cartMode: CartMode | null;
-    addItem: (item: CartItem, mode: CartMode) => boolean; // Returns false if mode conflict
+    addItem: (item: CartItem, mode: CartMode) => AddItemResult;
     removeItem: (index: number) => void;
     updateQuantity: (index: number, quantity: number) => void;
     clearCart: () => void;
-    switchMode: (newMode: CartMode, initialItem?: CartItem) => void; // Clears cart and switches mode, optionally adds an item
+    /** Clears cart and switches mode. With `initialItem`, returns false if that line would exceed stock. */
+    switchMode: (newMode: CartMode, initialItem?: CartItem) => boolean;
     subtotal: number;
     tax: number;
     total: number;
@@ -101,7 +108,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         return true;
     };
 
-    const addItem = (item: CartItem, mode: CartMode): boolean => {
+    const addItem = (item: CartItem, mode: CartMode): AddItemResult => {
         console.log('[CartContext] addItem called:', {
             item: { productId: item.productId, product_name: item.product_name },
             mode,
@@ -113,7 +120,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         // Check if mode matches current cart
         if (!modesMatch(cartMode, mode)) {
             console.warn('[CartContext] Mode conflict detected:', { cartMode, requestedMode: mode });
-            return false; // Mode conflict - caller should handle this
+            return { ok: false, reason: 'mode_conflict' };
+        }
+
+        if (!canAddQuantityForProduct(items, item)) {
+            const remaining = Math.min(remainingBeforeAdd(items, item), Number.MAX_SAFE_INTEGER);
+            return { ok: false, reason: 'insufficient_stock', remaining };
         }
 
         // Set mode if cart was empty
@@ -138,14 +150,18 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
                 return [...prev, item];
             }
         });
-        return true;
+        return { ok: true };
     };
 
-    const switchMode = (newMode: CartMode, initialItem?: CartItem) => {
+    const switchMode = (newMode: CartMode, initialItem?: CartItem): boolean => {
+        if (initialItem && !canAddQuantityForProduct([], initialItem)) {
+            return false;
+        }
         // If an initial item is provided, add it immediately after clearing
         // This avoids React state batching issues where addItem would fail
         setItems(initialItem ? [initialItem] : []);
         setCartMode(newMode);
+        return true;
     };
 
     const removeItem = (index: number) => {
@@ -166,10 +182,32 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         }
 
         setItems(prev => {
+            const line = prev[index];
+            if (!line) return prev;
+
+            const cap = maxQuantityForCartLine(prev, index);
+            let nextQty = quantity;
+
+            if (cap !== Number.MAX_SAFE_INTEGER) {
+                if (quantity > line.quantity) {
+                    nextQty = Math.min(quantity, cap);
+                    if (nextQty <= line.quantity) {
+                        return prev;
+                    }
+                } else {
+                    nextQty = quantity;
+                }
+            }
+
+            if (nextQty <= 0) {
+                const newItems = prev.filter((_, i) => i !== index);
+                if (newItems.length === 0) setCartMode(null);
+                return newItems;
+            }
+
             const newItems = prev.map((item, i) =>
-                i === index ? { ...item, quantity } : item
+                i === index ? { ...item, quantity: nextQty } : item
             );
-            // Clear cart mode if cart becomes empty
             if (newItems.length === 0) {
                 setCartMode(null);
             }

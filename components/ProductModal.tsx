@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -13,6 +13,8 @@ import { Product, CartItem, ProductSize, SelectionOption, AddOnOption } from '@/
 import { formatCurrency } from '@/lib/utils';
 import { useCart } from '@/contexts/CartContext';
 import { toast } from 'sonner';
+import { isUnlimitedStock, remainingUnitsForProduct } from '@/lib/stockUtils';
+import { ProductStockHint } from '@/components/ProductStockHint';
 import { Plus, Minus, AlertTriangle } from 'lucide-react';
 import CachedImage from '@/components/CachedImage';
 
@@ -27,7 +29,7 @@ interface ProductModalProps {
 }
 
 export default function ProductModal({ product, open, onClose, mode }: ProductModalProps) {
-    const { addItem, cartMode, switchMode } = useCart();
+    const { addItem, cartMode, switchMode, items } = useCart();
     const [showModeConflict, setShowModeConflict] = useState(false);
     const [pendingCartItem, setPendingCartItem] = useState<CartItem | null>(null);
 
@@ -37,6 +39,16 @@ export default function ProductModal({ product, open, onClose, mode }: ProductMo
     const [selectedSize, setSelectedSize] = useState<ProductSize | null>(null);
     const [selections, setSelections] = useState<Record<string, SelectionOption | null>>({});
     const [addOns, setAddOns] = useState<Record<string, SelectionOption[]>>({});
+
+    const stockRemaining = useMemo(
+        () => remainingUnitsForProduct(product, items),
+        [product, items],
+    );
+    /** UI cap for this add (per composite configuration); unlimited stock caps at 99. */
+    const maxSelectable = useMemo(() => {
+        if (isUnlimitedStock(product.quantity)) return 99;
+        return Math.min(99, Math.max(0, stockRemaining));
+    }, [product.quantity, stockRemaining]);
 
     // Reset state when product changes
     useEffect(() => {
@@ -55,6 +67,12 @@ export default function ProductModal({ product, open, onClose, mode }: ProductMo
             setAddOns({});
         }
     }, [open, product]);
+
+    // Keep in-modal quantity within available stock when cart or catalog changes
+    useEffect(() => {
+        if (!open) return;
+        setQuantity((q) => Math.min(q, Math.max(1, maxSelectable || 1)));
+    }, [open, maxSelectable]);
 
     // Get the current size key for looking up selections/addons
     const getSizeKey = (): string => {
@@ -94,9 +112,9 @@ export default function ProductModal({ product, open, onClose, mode }: ProductMo
     const calculatePrice = () => {
         let basePrice = product.special_price || product.price;
 
-        // Use size price if available
+        // Size cost is a delta added to the product price (Small=+$0, Medium=+$3, etc.)
         if (selectedSize) {
-            basePrice = selectedSize.special_cost || selectedSize.cost;
+            basePrice += selectedSize.special_cost || selectedSize.cost || 0;
         }
 
         // Add selection costs
@@ -155,11 +173,19 @@ export default function ProductModal({ product, open, onClose, mode }: ProductMo
             }));
         });
 
+        // Store the base unit price (product price + size delta). Cart computes
+        // the line total by adding selections + add-on costs on top — keeping
+        // price as base-only matches how the menu adds simple items, and
+        // avoids double-counting in cart/checkout.
+        const productBase = product.special_price || product.price;
+        const sizeDelta = selectedSize ? (selectedSize.special_cost || selectedSize.cost || 0) : 0;
+        const basePrice = productBase + sizeDelta;
+
         return {
             productId: product.id,
             product_name: product.title,
             quantity,
-            price: calculatePrice() / quantity,
+            price: basePrice,
             product_size_id: selectedSize?.id || null,
             selections: formattedSelections,
             add_ons: formattedAddOns,
@@ -175,28 +201,40 @@ export default function ProductModal({ product, open, onClose, mode }: ProductMo
         }
 
         const cartItem = createCartItem();
-        const success = addItem(cartItem, currentMode);
+        const result = addItem(cartItem, currentMode);
 
-        if (!success) {
-            // Mode conflict - show confirmation dialog
-            setPendingCartItem(cartItem);
-            setShowModeConflict(true);
+        if (result.ok) {
+            toast.success(`Added ${quantity}x ${product.title} to cart`);
+            onClose();
             return;
         }
 
-        toast.success(`Added ${quantity}x ${product.title} to cart`);
-        onClose();
+        if (result.reason === 'insufficient_stock') {
+            toast.error(
+                result.remaining === 0
+                    ? `${product.title} is out of stock.`
+                    : `Only ${result.remaining} left — you already have the rest in your cart.`,
+            );
+            return;
+        }
+
+        // Mode conflict - show confirmation dialog
+        setPendingCartItem(cartItem);
+        setShowModeConflict(true);
     };
 
     const handleConfirmModeSwitch = () => {
         if (pendingCartItem) {
-            // Pass the item directly to switchMode to avoid React state batching issues
-            switchMode(currentMode, pendingCartItem);
-            toast.success(`Cart cleared. Added ${pendingCartItem.quantity}x ${pendingCartItem.product_name} to cart`);
+            const ok = switchMode(currentMode, pendingCartItem);
+            if (ok) {
+                toast.success(`Cart cleared. Added ${pendingCartItem.quantity}x ${pendingCartItem.product_name} to cart`);
+                onClose();
+            } else {
+                toast.error('Not enough stock left for that item.');
+            }
         }
         setShowModeConflict(false);
         setPendingCartItem(null);
-        onClose();
     };
 
     const getConflictMessage = () => {
@@ -238,14 +276,16 @@ export default function ProductModal({ product, open, onClose, mode }: ProductMo
                 <div className="space-y-6">
                     {/* Product Image */}
                     {product.photoUrl && (
-                        <CachedImage
-                            src={product.photoUrl}
-                            alt={product.title}
-                            fill
-                            containerClassName="w-full h-64 rounded-lg"
-                            className="rounded-lg"
-                            priority
-                        />
+                        <div className="relative mx-auto w-full max-w-sm aspect-square overflow-hidden rounded-lg bg-muted">
+                            <CachedImage
+                                src={product.photoUrl}
+                                alt={product.title}
+                                fill
+                                containerClassName="absolute inset-0 size-full"
+                                className="rounded-lg"
+                                priority
+                            />
+                        </div>
                     )}
 
                     {/* Description */}
@@ -284,7 +324,7 @@ export default function ProductModal({ product, open, onClose, mode }: ProductMo
                                             </Label>
                                         </div>
                                         <span className="font-semibold">
-                                            {formatCurrency(size.special_cost || size.cost)}
+                                            {formatCurrency((product.special_price || product.price) + (size.special_cost || size.cost || 0))}
                                         </span>
                                     </div>
                                 ))}
@@ -362,6 +402,7 @@ export default function ProductModal({ product, open, onClose, mode }: ProductMo
                     {/* Quantity */}
                     <div className="space-y-3">
                         <Label className="text-base font-semibold">Quantity</Label>
+                        <ProductStockHint product={product} items={items} />
                         <div className="flex items-center gap-4">
                             <Button
                                 variant="outline"
@@ -373,14 +414,23 @@ export default function ProductModal({ product, open, onClose, mode }: ProductMo
                             <Input
                                 type="number"
                                 value={quantity}
-                                onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                                onChange={(e) => {
+                                    const raw = parseInt(e.target.value, 10);
+                                    if (!Number.isFinite(raw) || raw < 1) {
+                                        setQuantity(1);
+                                        return;
+                                    }
+                                    // Allow typing above maxSelectable; Add to Cart uses addItem and shows a stock toast if over limit.
+                                    setQuantity(raw);
+                                }}
                                 className="w-20 text-center"
                                 min={1}
                             />
                             <Button
                                 variant="outline"
                                 size="icon"
-                                onClick={() => setQuantity(quantity + 1)}
+                                disabled={quantity >= maxSelectable}
+                                onClick={() => setQuantity(Math.min(maxSelectable, quantity + 1))}
                             >
                                 <Plus className="h-4 w-4" />
                             </Button>
@@ -398,7 +448,7 @@ export default function ProductModal({ product, open, onClose, mode }: ProductMo
                     <Button variant="outline" onClick={onClose}>
                         Cancel
                     </Button>
-                    <Button onClick={handleAddToCart}>
+                    <Button onClick={handleAddToCart} disabled={!isUnlimitedStock(product.quantity) && maxSelectable === 0}>
                         Add to Cart
                     </Button>
                 </DialogFooter>

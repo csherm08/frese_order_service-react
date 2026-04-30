@@ -10,6 +10,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import CachedImage from '@/components/CachedImage';
 import { getOrderSiteMode } from '@/lib/siteConfig';
+import { isUnlimitedStock, maxQuantityForCartLine } from '@/lib/stockUtils';
 
 // Calculate item cost including selections and add-ons
 function getItemCost(item: any): number {
@@ -95,8 +96,11 @@ export default function CartPage() {
             <div className="grid lg:grid-cols-3 gap-8">
                 {/* Cart Items */}
                 <div className="lg:col-span-2 space-y-4">
-                    {items.map((item, index) => (
-                        <Card key={index}>
+                    {items.map((item, index) => {
+                        const lineCap = maxQuantityForCartLine(items, index);
+                        const atLineCap = lineCap !== Number.MAX_SAFE_INTEGER && item.quantity >= lineCap;
+                        return (
+                        <Card key={index} data-testid="cart-item">
                             <CardContent className="p-6">
                                 <div className="flex gap-4">
                                     {/* Product Image */}
@@ -151,28 +155,57 @@ export default function CartPage() {
                                         </div>
 
                                         {/* Quantity Controls */}
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-2">
-                                                <Button
-                                                    variant="outline"
-                                                    size="icon"
-                                                    className="h-8 w-8"
-                                                    onClick={() => updateQuantity(index, item.quantity - 1)}
-                                                >
-                                                    <Minus className="h-3 w-3" />
-                                                </Button>
-                                                <span className="w-8 text-center font-medium">{item.quantity}</span>
-                                                <Button
-                                                    variant="outline"
-                                                    size="icon"
-                                                    className="h-8 w-8"
-                                                    onClick={() => updateQuantity(index, item.quantity + 1)}
-                                                >
-                                                    <Plus className="h-3 w-3" />
-                                                </Button>
+                                        <div className="flex items-start justify-between gap-4">
+                                            <div className="flex flex-col gap-1">
+                                                <div className="flex items-center gap-2">
+                                                    <Button
+                                                        variant="outline"
+                                                        size="icon"
+                                                        className="h-8 w-8"
+                                                        aria-label="Decrease quantity"
+                                                        data-testid="cart-line-decrement"
+                                                        onClick={() => updateQuantity(index, item.quantity - 1)}
+                                                    >
+                                                        <Minus className="h-3 w-3" />
+                                                    </Button>
+                                                    <span className="w-8 text-center font-medium" data-testid="cart-line-quantity">{item.quantity}</span>
+                                                    <Button
+                                                        variant="outline"
+                                                        size="icon"
+                                                        className="h-8 w-8"
+                                                        disabled={atLineCap}
+                                                        data-testid="cart-line-increment"
+                                                        aria-label={
+                                                            atLineCap
+                                                                ? 'Cannot add more — store inventory limit for this line'
+                                                                : 'Increase quantity'
+                                                        }
+                                                        onClick={() => updateQuantity(index, item.quantity + 1)}
+                                                    >
+                                                        <Plus className="h-3 w-3" />
+                                                    </Button>
+                                                </div>
+                                                {item.product && !isUnlimitedStock(item.product.quantity) && (
+                                                    <p
+                                                        className="text-xs text-muted-foreground max-w-[18rem]"
+                                                        data-testid="cart-line-stock-hint"
+                                                    >
+                                                        {atLineCap ? (
+                                                            <>
+                                                                At inventory limit for this line ({item.quantity} of{' '}
+                                                                {lineCap} allowed; {item.product.quantity} in store).
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                Up to {lineCap} on this line ({item.product.quantity}{' '}
+                                                                in store). {lineCap - item.quantity} more can be added.
+                                                            </>
+                                                        )}
+                                                    </p>
+                                                )}
                                             </div>
 
-                                            <div className="text-right">
+                                            <div className="text-right shrink-0">
                                                 <p className="font-semibold text-lg">
                                                     {formatCurrency(getItemCost(item) * item.quantity)}
                                                 </p>
@@ -185,7 +218,8 @@ export default function CartPage() {
                                 </div>
                             </CardContent>
                         </Card>
-                    ))}
+                    );
+                    })}
 
                     <Button
                         variant="outline"

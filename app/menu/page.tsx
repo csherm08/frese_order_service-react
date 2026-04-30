@@ -14,7 +14,9 @@ import { getOrderSiteMode } from '@/lib/siteConfig';
 import { cn, formatCurrency } from '@/lib/utils';
 import ProductModal from '@/components/ProductModal';
 import CachedImage from '@/components/CachedImage';
+import { ProductStockHint } from '@/components/ProductStockHint';
 import { toast } from 'sonner';
+import { isUnlimitedStock, remainingUnitsForProduct } from '@/lib/stockUtils';
 
 // Check if product has customization options (sizes, selections, or add-ons)
 function productNeedsModal(product: Product): boolean {
@@ -30,9 +32,10 @@ export default function MenuPage() {
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
     const [filter, setFilter] = useState<string>('all');
     const [productTypes, setProductTypes] = useState<any[]>([]);
-    const { items, addItem } = useCart();
+    const { items, addItem, cartMode } = useCart();
     const cartItemCount = items.reduce((sum, item) => sum + item.quantity, 0);
     const siteMode = getOrderSiteMode();
+    const lockedToSpecial = items.length > 0 && cartMode?.type === 'special';
 
     // Add simple product directly to cart without modal
     const addSimpleProduct = (product: Product) => {
@@ -48,14 +51,30 @@ export default function MenuPage() {
             product: product,
         };
 
-        const success = addItem(cartItem, { type: 'regular' });
-        if (success) {
+        const result = addItem(cartItem, { type: 'regular' });
+        if (result.ok) {
             toast.success(`Added ${product.title} to cart`);
+        } else if (result.reason === 'insufficient_stock') {
+            toast.error(
+                result.remaining === 0
+                    ? `${product.title} is out of stock.`
+                    : `Only ${result.remaining} left — you already have the rest in your cart.`
+            );
+        } else {
+            toast.error('This item uses a different order type than your cart. Clear the cart or finish that order first.');
         }
+    };
+
+    const canAddProductFromMenu = (product: Product) => {
+        if (lockedToSpecial) return false;
+        if (product.quantity === 0) return false;
+        if (isUnlimitedStock(product.quantity)) return true;
+        return remainingUnitsForProduct(product, items) > 0;
     };
 
     // Handle add to cart click - either show modal or add directly
     const handleAddToCart = (product: Product) => {
+        if (lockedToSpecial) return;
         if (productNeedsModal(product)) {
             setSelectedProduct(product);
         } else {
@@ -138,6 +157,22 @@ export default function MenuPage() {
                     </p>
                 </div>
 
+                {lockedToSpecial && cartMode?.type === 'special' && (
+                    <div className="rounded-md border border-amber-300 bg-amber-50 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <p className="text-sm text-amber-900">
+                            You have an order in progress for <span className="font-semibold">{cartMode.specialName}</span>. Finish it or clear your cart to order from the regular menu.
+                        </p>
+                        <div className="flex gap-2">
+                            <Link href="/cart">
+                                <Button size="sm" variant="outline">View Cart</Button>
+                            </Link>
+                            <Link href={`/order/special/${cartMode.specialId}`}>
+                                <Button size="sm">Continue Special</Button>
+                            </Link>
+                        </div>
+                    </div>
+                )}
+
                 {/* Category Filter */}
                 <div className="flex gap-2 overflow-x-auto pb-2">
                     <Button
@@ -164,20 +199,22 @@ export default function MenuPage() {
                 <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                     {filteredProducts.map((product) => (
                         <Card key={product.id} className="flex flex-col hover:shadow-lg transition-all duration-300 group overflow-hidden">
-                            <CardHeader className="p-0">
-                                {product.photoUrl ? (
-                                    <CachedImage
-                                        src={product.photoUrl}
-                                        alt={product.title}
-                                        fill
-                                        containerClassName="w-full h-48 rounded-t-xl overflow-hidden"
-                                        className="rounded-t-xl group-hover:scale-105 transition-transform duration-300"
-                                    />
-                                ) : (
-                                    <div className="w-full h-48 bg-gray-200 rounded-t-xl flex items-center justify-center">
-                                        <span className="text-gray-400">No image</span>
-                                    </div>
-                                )}
+                            <CardHeader className="p-0 space-y-0 shrink-0">
+                                <div className="relative w-full aspect-square overflow-hidden rounded-t-xl bg-muted">
+                                    {product.photoUrl ? (
+                                        <CachedImage
+                                            src={product.photoUrl}
+                                            alt={product.title}
+                                            fill
+                                            containerClassName="absolute inset-0 size-full"
+                                            className="rounded-t-xl group-hover:scale-105 transition-transform duration-300"
+                                        />
+                                    ) : (
+                                        <div className="absolute inset-0 flex items-center justify-center">
+                                            <span className="text-muted-foreground text-sm">No image</span>
+                                        </div>
+                                    )}
+                                </div>
                             </CardHeader>
 
                             <CardContent className="flex-1 pt-4 space-y-2">
@@ -211,16 +248,14 @@ export default function MenuPage() {
                                     )}
                                 </div>
 
-                                {product.quantity === 0 && (
-                                    <Badge variant="secondary">Sold Out</Badge>
-                                )}
+                                <ProductStockHint product={product} items={items} />
                             </CardContent>
 
                             <CardFooter className="pt-0">
                                 <Button
                                     className="w-full"
                                     onClick={() => handleAddToCart(product)}
-                                    disabled={product.quantity === 0}
+                                    disabled={!canAddProductFromMenu(product)}
                                 >
                                     <Plus className="h-4 w-4 mr-2" />
                                     Add to Cart
