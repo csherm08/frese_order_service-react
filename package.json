@@ -12,6 +12,10 @@
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:debug": "playwright test --debug",
     "test:e2e:headed": "playwright test --headed",
+    "test:e2e:timeslots": "playwright test tests/timeslots-and-quantities.spec.ts",
+    "test:e2e:timeslots:headed": "playwright test tests/timeslots-and-quantities.spec.ts --headed",
+    "test:e2e:timeslots:ui": "playwright test tests/timeslots-and-quantities.spec.ts --ui",
+    "test:e2e:timeslots:fast": "PLAYWRIGHT_SLOWMO=0 PLAYWRIGHT_STEP_PAUSE_MS=0 playwright test tests/timeslots-and-quantities.spec.ts",
     "test:e2e:install": "playwright install chromium",
     "test:e2e:record": "playwright codegen http://localhost:8100",
     "test:e2e:record-checkout": "playwright codegen http://localhost:8100/checkout"

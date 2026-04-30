@@ -114,7 +114,9 @@ export async function getRegularTimeslots(daysOut: number = 6) {
 }
 
 export async function getSpecialTimeslots(specialId: number) {
-    const response = await fetch(`${API_URL}/orders/availableSpecialTimes/${specialId}`);
+    const response = await fetch(
+        `${API_URL}/orders/availableSpecialTimes/${specialId}?activeOnly=true`,
+    );
 
     if (!response.ok) {
         throw new Error('Failed to fetch special timeslots');

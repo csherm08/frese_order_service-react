@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { format } from "date-fns"
@@ -18,6 +18,18 @@ interface TimeslotSelectorProps {
 
 interface GroupedTimeslots {
     [date: string]: any[]
+}
+
+/** Match Ionic `products.service.ts` loadAvailableTimes: drop closed / inactive slots from the API map. */
+function pruneInactiveTimeSlots(map: Record<string, any>): Record<string, any> {
+    const out: Record<string, any> = { ...map }
+    Object.keys(out).forEach((k) => {
+        const slot = out[k]
+        if (!slot || !slot.active) {
+            delete out[k]
+        }
+    })
+    return out
 }
 
 function getTimePeriod(timestamp: string): "morning" | "afternoon" | "evening" {
@@ -54,11 +66,16 @@ export default function TimeslotSelector({ items, onSelect, loading: externalLoa
     const [selectedTimeslot, setSelectedTimeslot] = useState<any>(null)
     const [specialTypeId, setSpecialTypeId] = useState<number | null>(null)
 
-    useEffect(() => {
-        loadTimeslots()
-    }, [])
+    const cartKey = useMemo(
+        () =>
+            items
+                .map((i) => `${i.productId}:${i.typeId}`)
+                .sort()
+                .join("|"),
+        [items],
+    )
 
-    async function loadTimeslots() {
+    const loadTimeslots = useCallback(async () => {
         setLoading(true)
         try {
             if (specialTypeId === null) {
@@ -88,8 +105,6 @@ export default function TimeslotSelector({ items, onSelect, loading: externalLoa
                     const specialTimes = await getSpecialTimeslots(specialId)
                     allTimes = { ...allTimes, ...specialTimes }
                 }
-
-                toast.info("Special items in cart - showing special pickup times only")
             } else {
                 const specials = await fetchSpecials()
                 const productIdsInCart = items.map((i) => i.productId)
@@ -107,14 +122,15 @@ export default function TimeslotSelector({ items, onSelect, loading: externalLoa
                 allTimes = { ...allTimes, ...regularTimes }
             }
 
-            const timesArray = Object.keys(allTimes)
-                .map((timestamp) => ({
-                    id: timestamp,
-                    timestamp: timestamp,
-                    amountLeft: allTimes[timestamp].amountLeft,
-                    active: allTimes[timestamp].active,
-                }))
-                .filter((slot) => slot.active)
+            // Same as Ionic: strip inactive/closed slots from the merged map before showing times.
+            allTimes = pruneInactiveTimeSlots(allTimes)
+
+            const timesArray = Object.keys(allTimes).map((timestamp) => ({
+                id: timestamp,
+                timestamp: timestamp,
+                amountLeft: allTimes[timestamp].amountLeft,
+                active: allTimes[timestamp].active,
+            }))
 
             const grouped: GroupedTimeslots = {}
             timesArray.forEach((slot) => {
@@ -155,7 +171,11 @@ export default function TimeslotSelector({ items, onSelect, loading: externalLoa
         } finally {
             setLoading(false)
         }
-    }
+    }, [specialTypeId, cartKey])
+
+    useEffect(() => {
+        loadTimeslots()
+    }, [loadTimeslots])
 
     const handleTimeslotClick = (timeslot: any) => {
         setSelectedTimeslot(timeslot)

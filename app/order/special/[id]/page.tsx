@@ -1,12 +1,11 @@
 "use client"
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'next/navigation';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Plus, Loader2, Calendar, ArrowLeft, ShoppingCart } from 'lucide-react';
-import { fetchSpecials } from '@/lib/api';
+import { fetchSpecials, fetchProductTypes } from '@/lib/api';
 import { Special } from '@/types/special';
 import { Product, CartItem } from '@/types/products';
 import { cn, formatCurrency, formatSpecialDateRange } from '@/lib/utils';
@@ -15,6 +14,8 @@ import CachedImage from '@/components/CachedImage';
 import Link from 'next/link';
 import { useCart } from '@/contexts/CartContext';
 import { toast } from 'sonner';
+import { isUnlimitedStock, remainingUnitsForProduct } from '@/lib/stockUtils';
+import { ProductStockHint } from '@/components/ProductStockHint';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -25,6 +26,15 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+
+/** After API order is applied, list true “Special”-type products first (e.g. entrée vs add-on breads). */
+function sortSpecialTypeProductsFirst(specialTypeId: number | null, products: Product[]): Product[] {
+    if (!products.length || specialTypeId == null) return products;
+    const primary = products.filter((p) => p.typeId === specialTypeId);
+    if (primary.length === 0) return products;
+    const other = products.filter((p) => p.typeId !== specialTypeId);
+    return [...primary, ...other];
+}
 
 // Check if product has customization options (sizes, selections, or add-ons)
 function productNeedsModal(product: Product): boolean {
@@ -39,6 +49,7 @@ export default function SpecialOrderPage() {
     const specialId = parseInt(params.id as string);
 
     const [special, setSpecial] = useState<Special | null>(null);
+    const [specialTypeId, setSpecialTypeId] = useState<number | null>(null);
     const [loading, setLoading] = useState(true);
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
     const [showModeConflictDialog, setShowModeConflictDialog] = useState(false);
@@ -72,9 +83,15 @@ export default function SpecialOrderPage() {
             currentItems: items
         });
 
-        const success = addItem(cartItem, { type: 'special', specialId: special.id, specialName: special.name });
-        if (success) {
+        const result = addItem(cartItem, { type: 'special', specialId: special.id, specialName: special.name });
+        if (result.ok) {
             toast.success(`Added ${product.title} to cart`);
+        } else if (result.reason === 'insufficient_stock') {
+            toast.error(
+                result.remaining === 0
+                    ? `${product.title} is out of stock.`
+                    : `Only ${result.remaining} left — you already have the rest in your cart.`
+            );
         } else {
             // Mode conflict - show confirmation dialog
             console.error('[SpecialOrderPage] Failed to add item to cart. Showing conflict dialog:', {
@@ -92,14 +109,23 @@ export default function SpecialOrderPage() {
         }
     };
 
+    const canAddProductFromSpecial = (product: Product) => {
+        if (product.quantity === 0) return false;
+        if (isUnlimitedStock(product.quantity)) return true;
+        return remainingUnitsForProduct(product, items) > 0;
+    };
+
     const handleConfirmModeSwitch = () => {
         if (pendingCartItem && special) {
-            // Switch mode and add the item
-            switchMode(
+            const ok = switchMode(
                 { type: 'special', specialId: special.id, specialName: special.name },
                 pendingCartItem
             );
-            toast.success(`Cart cleared. Added ${pendingCartItem.product_name} to cart`);
+            if (ok) {
+                toast.success(`Cart cleared. Added ${pendingCartItem.product_name} to cart`);
+            } else {
+                toast.error('Not enough stock left for that item.');
+            }
         }
         setShowModeConflictDialog(false);
         setPendingCartItem(null);
@@ -143,7 +169,9 @@ export default function SpecialOrderPage() {
 
     async function loadSpecial() {
         try {
-            const specials = await fetchSpecials();
+            const [specials, types] = await Promise.all([fetchSpecials(), fetchProductTypes()]);
+            const specialRow = types.find((t: { name: string }) => t.name === 'Special');
+            setSpecialTypeId(specialRow?.id ?? null);
             const found = specials.find((s: Special) => s.id === specialId);
             setSpecial(found || null);
         } catch (error) {
@@ -152,6 +180,11 @@ export default function SpecialOrderPage() {
             setLoading(false);
         }
     }
+
+    const displayProducts = useMemo(
+        () => sortSpecialTypeProductsFirst(specialTypeId, special?.products ?? []),
+        [special?.products, specialTypeId],
+    );
 
     if (loading) {
         return (
@@ -178,7 +211,6 @@ export default function SpecialOrderPage() {
         );
     }
 
-    const products = special.products || [];
     const cartItemCount = items.reduce((sum, item) => sum + item.quantity, 0);
 
     return (
@@ -210,59 +242,36 @@ export default function SpecialOrderPage() {
                     )}
                 </div>
 
-                {/* Special Header */}
-                <div className="relative rounded-xl overflow-hidden">
-                    {special.photoUrl && (
-                        <div className="absolute inset-0">
-                            <CachedImage
-                                src={special.photoUrl}
-                                alt={special.name}
-                                fill
-                                containerClassName="w-full h-full"
-                                priority
-                            />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
-                        </div>
-                    )}
-
-                    <div className={`relative ${special.photoUrl ? 'text-white py-16 px-6' : 'py-8'}`}>
-                        <div className="max-w-2xl">
-                            <h1 className="text-4xl font-bold mb-2">{special.name}</h1>
-                            {special.description && (
-                                <p className={`text-lg ${special.photoUrl ? 'text-gray-200' : 'text-muted-foreground'} mb-4`}>
-                                    {special.description}
-                                </p>
-                            )}
-                            <div className={`flex items-center gap-2 text-sm ${special.photoUrl ? 'text-gray-300' : 'text-muted-foreground'}`}>
-                                <Calendar className="h-4 w-4" />
-                                <span>Available: {formatSpecialDateRange(special.start, special.end)}</span>
-                            </div>
+                {/* Orderable items first — main reason visitors open this page */}
+                <div className="space-y-4">
+                    <div className="space-y-1">
+                        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{special.name}</h1>
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Calendar className="h-4 w-4" />
+                            <span>Available: {formatSpecialDateRange(special.start, special.end)}</span>
                         </div>
                     </div>
-                </div>
 
-                {/* Products Grid - Same style as Menu */}
-                <div className="space-y-4">
-                    <h2 className="text-2xl font-semibold">Available Items</h2>
-
-                    {products.length > 0 ? (
+                    {displayProducts.length > 0 ? (
                         <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                            {products.map((product) => (
+                            {displayProducts.map((product) => (
                                 <Card key={product.id} className="flex flex-col hover:shadow-lg transition-shadow">
-                                    <CardHeader className="p-0">
-                                        {product.photoUrl ? (
-                                            <CachedImage
-                                                src={product.photoUrl}
-                                                alt={product.title}
-                                                fill
-                                                containerClassName="w-full h-48 rounded-t-lg"
-                                                className="rounded-t-lg"
-                                            />
-                                        ) : (
-                                            <div className="w-full h-48 bg-gradient-to-br from-amber-100 to-orange-100 rounded-t-lg flex items-center justify-center">
-                                                <span className="text-4xl">🥖</span>
-                                            </div>
-                                        )}
+                                    <CardHeader className="p-0 space-y-0 shrink-0">
+                                        <div className="relative w-full aspect-square overflow-hidden rounded-t-lg bg-muted">
+                                            {product.photoUrl ? (
+                                                <CachedImage
+                                                    src={product.photoUrl}
+                                                    alt={product.title}
+                                                    fill
+                                                    containerClassName="absolute inset-0 size-full"
+                                                    className="rounded-t-lg"
+                                                />
+                                            ) : (
+                                                <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-amber-100 to-orange-100">
+                                                    <span className="text-4xl">🥖</span>
+                                                </div>
+                                            )}
+                                        </div>
                                     </CardHeader>
 
                                     <CardContent className="flex-1 pt-4">
@@ -275,12 +284,14 @@ export default function SpecialOrderPage() {
                                         <p className="font-bold text-lg text-primary">
                                             {formatCurrency(product.price)}
                                         </p>
+                                        <ProductStockHint product={product} items={items} />
                                     </CardContent>
 
                                     <CardFooter className="pt-0">
                                         <Button
                                             className="w-full"
                                             onClick={() => handleAddToCart(product)}
+                                            disabled={!canAddProductFromSpecial(product)}
                                         >
                                             <Plus className="mr-2 h-4 w-4" />
                                             Add to Cart

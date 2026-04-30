@@ -161,6 +161,7 @@ export default function CheckoutPage() {
     const [customerName, setCustomerName] = useState('')
     const [customerEmail, setCustomerEmail] = useState('')
     const [customerPhone, setCustomerPhone] = useState('')
+    const [orderNotes, setOrderNotes] = useState('')
     const [orderConfirmation, setOrderConfirmation] = useState<any>(null)
 
     // After a successful order we clear the cart; confirm step must still render with empty items.
@@ -240,7 +241,7 @@ export default function CheckoutPage() {
         })),
         total: total,
         pickupTime: selectedTimeslot?.timestamp,
-        notes: '',
+        notes: orderNotes,
         status: 'pending',
     } : null
 
@@ -408,6 +409,17 @@ export default function CheckoutPage() {
                                             value={customerPhone}
                                             onChange={(e) => setCustomerPhone(e.target.value)}
                                             required
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="notes">Special Instructions</Label>
+                                        <textarea
+                                            id="notes"
+                                            value={orderNotes}
+                                            onChange={(e) => setOrderNotes(e.target.value)}
+                                            rows={3}
+                                            placeholder="Any allergies or other notes for your order"
+                                            className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-base shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
                                         />
                                     </div>
                                 </form>

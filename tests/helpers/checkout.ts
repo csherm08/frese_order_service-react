@@ -1,4 +1,31 @@
-import { Page, expect } from '@playwright/test';
+import { Page, Locator, expect } from '@playwright/test';
+
+/**
+ * Pick the first option of every radio group and select inside the given modal.
+ * Required so a generic "click Add to Cart" can submit a product whose modal
+ * has required Size / Style / Flavor selections.
+ */
+export async function fillModalDefaults(modal: Locator) {
+    const page = modal.page();
+    const radioGroups = modal.locator('[role="radiogroup"]');
+    const radioGroupCount = await radioGroups.count();
+    for (let i = 0; i < radioGroupCount; i++) {
+        const firstOption = radioGroups.nth(i).locator('button[role="radio"]').first();
+        if (await firstOption.count() > 0) {
+            await firstOption.click();
+        }
+    }
+    const selects = modal.locator('[role="combobox"]');
+    const selectCount = await selects.count();
+    for (let i = 0; i < selectCount; i++) {
+        await selects.nth(i).click();
+        const firstOption = page.locator('[role="option"]').first();
+        await firstOption.waitFor({ state: 'visible', timeout: 2000 }).catch(() => { });
+        if (await firstOption.count() > 0) {
+            await firstOption.click();
+        }
+    }
+}
 
 /**
  * Test data constants
@@ -137,27 +164,16 @@ export async function addProductWithOptionsToCart(
             }
         }
 
-        // Add add-ons if provided
+        // Add add-ons if provided. Add-ons render as Radix `[role="checkbox"]`
+        // (a button), with a clickable Label containing the option text.
+        // Clicking the option text toggles the checkbox via htmlFor.
         if (options.addOns) {
             for (const [key, values] of Object.entries(options.addOns)) {
                 for (const value of values) {
                     console.log(`  Adding add-on: ${key} = ${value}`);
-                    // Find the checkbox for this add-on
-                    // The checkbox is near the add-on value text
-                    const addOnContainer = modal.locator(`text=${value}`).locator('..').locator('..');
-                    const checkbox = addOnContainer.locator('[type="checkbox"]').first();
-
-                    if (await checkbox.count() > 0) {
-                        const isChecked = await checkbox.isChecked().catch(() => false);
-                        if (!isChecked) {
-                            await checkbox.click();
-                            await page.waitForTimeout(200);
-                        }
-                    } else {
-                        // Try clicking the container itself
-                        await addOnContainer.click();
-                        await page.waitForTimeout(200);
-                    }
+                    const optionText = modal.getByText(value, { exact: true }).first();
+                    await optionText.click();
+                    await page.waitForTimeout(200);
                 }
             }
         }
@@ -197,18 +213,21 @@ export async function addProductFromSpecialToCart(
     // Wait for products to load
     await page.waitForSelector('text=Add to Cart', { timeout: 10000 });
 
-    // Find and click the product
-    const productCard = page.locator(`text=${productName}`).locator('..').locator('..');
-    const addToCartButton = productCard.locator('button:has-text("Add to Cart")').first();
-
-    if ((await addToCartButton.count()) === 0) {
-        // Fallback: find button near product name
-        const productTitle = page.locator(`text=${productName}`).first();
-        await expect(productTitle).toBeVisible({ timeout: 10000 });
-        const nearbyButton = page.locator('button:has-text("Add to Cart")').first();
-        await nearbyButton.click();
+    // Find and click the product. When productName is empty (caller doesn't
+    // care which product), click the first ENABLED Add to Cart so we don't
+    // waste time clicking a sold-out/disabled card.
+    if (productName) {
+        const productCard = page.locator(`text=${productName}`).locator('..').locator('..');
+        const addToCartButton = productCard.locator('button:has-text("Add to Cart")').first();
+        if ((await addToCartButton.count()) > 0) {
+            await addToCartButton.click();
+        } else {
+            const productTitle = page.locator(`text=${productName}`).first();
+            await expect(productTitle).toBeVisible({ timeout: 10000 });
+            await page.locator('button:has-text("Add to Cart"):not([disabled])').first().click();
+        }
     } else {
-        await addToCartButton.click();
+        await page.locator('button:has-text("Add to Cart"):not([disabled])').first().click();
     }
 
     // Check if modal opened
@@ -273,7 +292,10 @@ export async function addProductFromSpecialToCart(
             await confirmButton.click();
             await page.waitForTimeout(1000);
         } else {
-            // No conflict, just add to cart
+            // No conflict — fill any required radio/select defaults the caller
+            // didn't explicitly configure, then submit. Without this, products
+            // with a required Styles/Flavor select silently keep the modal open.
+            await fillModalDefaults(modal);
             const addToCartInModal = modal.locator('button:has-text("Add to Cart")').first();
             await expect(addToCartInModal).toBeVisible({ timeout: 5000 });
             await addToCartInModal.click();
@@ -381,6 +403,11 @@ export async function getAvailableSpecials(page: Page): Promise<Array<{ id: numb
  * Navigate to checkout page from cart
  */
 export async function navigateToCheckout(page: Page) {
+    if (!page.url().endsWith('/cart')) {
+        await page.goto('/cart');
+        await page.waitForURL('/cart', { timeout: 10000 });
+    }
+
     const checkoutButton = page.locator('button:has-text("Checkout")').first();
     await expect(checkoutButton).toBeVisible({ timeout: 5000 });
     await checkoutButton.click();

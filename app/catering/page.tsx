@@ -1,6 +1,13 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Phone, Mail, Users, Calendar, CheckCircle } from 'lucide-react';
+import { Phone, Mail, Users, Calendar, CheckCircle, FileText } from 'lucide-react';
+import CateringQuoteForm from '@/components/CateringQuoteForm';
+
+const CATERING_MENUS = [
+    { title: 'Full Service Menu', file: '/catering/Full Service Menu 2026.pdf' },
+    { title: 'A La Carte Menu', file: '/catering/Ala Carte Menu 2026.pdf' },
+    { title: 'Barbecue Menu', file: '/catering/Barbecue Menu 2026.pdf' },
+];
 
 export default function CateringPage() {
     return (
@@ -13,6 +20,41 @@ export default function CateringPage() {
                         Let Frese's Bakery cater your next event with our delicious baked goods and fried chicken
                     </p>
                 </div>
+
+                {/* Catering Menus */}
+                <div className="space-y-4">
+                    <h2 className="text-3xl font-bold text-center">Catering Menus</h2>
+                    <div className="grid sm:grid-cols-3 gap-4">
+                        {CATERING_MENUS.map((menu) => (
+                            <Card key={menu.file} className="hover:shadow-lg transition-shadow">
+                                <CardContent className="pt-6 text-center space-y-4">
+                                    <div className="bg-orange-100 rounded-full p-4 w-16 h-16 flex items-center justify-center mx-auto">
+                                        <FileText className="h-8 w-8 text-orange-600" />
+                                    </div>
+                                    <h3 className="font-semibold text-lg">{menu.title}</h3>
+                                    <Button asChild className="w-full">
+                                        <a href={menu.file} target="_blank" rel="noopener noreferrer">
+                                            View Menu
+                                        </a>
+                                    </Button>
+                                </CardContent>
+                            </Card>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Request a Quote */}
+                <Card>
+                    <CardContent className="pt-6 space-y-4">
+                        <div className="text-center space-y-2">
+                            <h2 className="text-3xl font-bold">Request a Quote</h2>
+                            <p className="text-muted-foreground">
+                                Tell us about your event and we&apos;ll get back to you with a custom quote.
+                            </p>
+                        </div>
+                        <CateringQuoteForm />
+                    </CardContent>
+                </Card>
 
                 {/* Features */}
                 <div className="grid md:grid-cols-3 gap-6">
