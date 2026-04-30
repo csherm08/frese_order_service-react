@@ -13,6 +13,7 @@ import {
     TEST_CARDS,
     TEST_CUSTOMER,
     getAvailableSpecials,
+    fillModalDefaults,
 } from './helpers/checkout';
 import {
     setupTestSpecials,
@@ -23,11 +24,19 @@ import {
  * Test suite for specials and cart mode conflicts
  */
 
+// Run this suite in a single worker, sequentially. The beforeAll/afterAll
+// create+delete test specials in the shared DB; parallel workers would race
+// each other and silently miss deletes (or skip on transiently-empty fetches).
+test.describe.configure({ mode: 'serial' });
+
 test.describe('Specials and Cart Logic', () => {
     let testSpecialIds: number[] = [];
 
-    // Setup: Create test specials before all tests
+    // Setup: Create test specials before all tests.
+    // Backend auto-generates timeslots per special which can take 10-20s each;
+    // bump the hook timeout so 2 specials don't time out the default 30s.
     test.beforeAll(async () => {
+        test.setTimeout(120_000);
         try {
             testSpecialIds = await setupTestSpecials();
             console.log(`Setup complete: Created ${testSpecialIds.length} test specials`);
@@ -105,7 +114,8 @@ test.describe('Specials and Cart Logic', () => {
                 const modalVisible = await modal.isVisible().catch(() => false);
 
                 if (modalVisible) {
-                    // Try to add from modal - this should trigger conflict dialog
+                    // Fill any required selections so the modal can submit, then click Add
+                    await fillModalDefaults(modal);
                     const addInModal = modal.locator('button:has-text("Add to Cart")').first();
                     await addInModal.click();
                     await page.waitForTimeout(1000);
@@ -164,6 +174,7 @@ test.describe('Specials and Cart Logic', () => {
             const modalVisible = await modal.isVisible().catch(() => false);
 
             if (modalVisible) {
+                await fillModalDefaults(modal);
                 const addInModal = modal.locator('button:has-text("Add to Cart")').first();
                 await addInModal.click();
                 await page.waitForTimeout(1000);
@@ -224,6 +235,7 @@ test.describe('Specials and Cart Logic', () => {
             const modalVisible = await modal.isVisible().catch(() => false);
 
             if (modalVisible) {
+                await fillModalDefaults(modal);
                 const addInModal = modal.locator('button:has-text("Add to Cart")').first();
                 await addInModal.click();
                 await page.waitForTimeout(1000);
@@ -347,8 +359,8 @@ test.describe('Specials and Cart Logic', () => {
         await page.waitForURL('/specials', { timeout: 10000 });
         await page.waitForSelector('text=Order Now', { timeout: 10000 }).catch(() => { });
 
-        // Step 3: Click "Order Now" on a special
-        const orderButton = page.locator('a:has-text("Order Now"), button:has-text("Order Now")').first();
+        // Step 3: Click "Order Now" on a special (scope to main, not header nav)
+        const orderButton = page.locator('main button:has-text("Order Now")').first();
 
         if ((await orderButton.count()) > 0) {
             await orderButton.click();

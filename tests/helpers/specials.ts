@@ -103,8 +103,10 @@ export async function getProductIds(limit: number = 10): Promise<number[]> {
 export function createTestSpecial(
     name: string,
     productIds: number[],
-    daysFromNow: number = 7
+    daysFromNow: number = 1
 ): SpecialData {
+    // Default: 1 day window. The backend auto-generates 4 slots/hour, so a
+    // 7-day range produces ~672 slots and pushes special creation past 20s.
     const now = new Date();
     const end = new Date(now);
     end.setDate(end.getDate() + daysFromNow);
@@ -144,7 +146,7 @@ export async function setupTestSpecials(productIds?: number[]): Promise<number[]
         const special1 = createTestSpecial(
             'Test Special 1',
             productIdList.slice(0, 3),
-            7
+            1
         );
         const id1 = await createSpecial(special1);
         specialIds.push(id1);
