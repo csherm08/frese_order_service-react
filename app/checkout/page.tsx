@@ -12,6 +12,7 @@ import { ShoppingBag, ArrowLeft, CheckCircle, Loader2 } from "lucide-react"
 import Link from "next/link"
 import { formatCurrency, formatDateTime } from '@/lib/utils'
 import { createPaymentIntent, processOrderAndPay } from '@/lib/api'
+import { getOrderSiteMode } from '@/lib/siteConfig'
 import { loadStripe } from '@stripe/stripe-js'
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js'
 import { toast } from 'sonner'
@@ -243,6 +244,10 @@ export default function CheckoutPage() {
         pickupTime: selectedTimeslot?.timestamp,
         notes: orderNotes,
         status: 'pending',
+        // Storefront the order originated from. Backend uses this to opt
+        // the customer into the right email subscriber list (main vs
+        // plugpower) — the two storefronts are run as separate businesses.
+        site: getOrderSiteMode(),
     } : null
 
     // Calculate item total for display

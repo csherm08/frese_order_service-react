@@ -1,3 +1,5 @@
+import { getOrderSiteMode } from '@/lib/siteConfig';
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://frese-bakery-backend-app-504689514656.us-east1.run.app/api";
 
 export type StripePublicConfig = {
@@ -36,7 +38,10 @@ export async function fetchProductTypes() {
 }
 
 export async function fetchSpecials() {
-    const response = await fetch(`${API_URL}/activeSpecials?activeOnly=true`);
+    // Pass the storefront mode so plug power doesn't see main-bakery
+    // specials and vice versa. Backend filters by specials.audience.
+    const site = getOrderSiteMode();
+    const response = await fetch(`${API_URL}/activeSpecials?activeOnly=true&site=${site}`);
 
     if (!response.ok) {
         throw new Error('Failed to fetch specials');
