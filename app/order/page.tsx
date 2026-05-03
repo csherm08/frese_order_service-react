@@ -21,12 +21,9 @@ export default function OrderPage() {
     const lockedToSpecial = cartHasItems && cartMode?.type === 'special';
     const lockedSpecialId = lockedToSpecial && cartMode?.type === 'special' ? cartMode.specialId : null;
     const [specials, setSpecials] = useState<Special[]>([]);
-    const [loading, setLoading] = useState(siteMode === 'main');
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        if (siteMode === 'plugpower') {
-            return;
-        }
         loadSpecials();
     }, [siteMode]);
 
@@ -39,25 +36,6 @@ export default function OrderPage() {
         } finally {
             setLoading(false);
         }
-    }
-
-    if (siteMode === 'plugpower') {
-        return (
-            <div className="container px-4 py-8 max-w-lg mx-auto">
-                <div className="space-y-6 text-center">
-                    <h1 className="text-3xl font-bold">Plug Power — Order online</h1>
-                    <p className="text-muted-foreground">
-                        This menu is for our Plug Power location. Pickup times and hours may differ from the main bakery.
-                    </p>
-                    <Button asChild size="lg" className="w-full sm:w-auto">
-                        <Link href="/menu">
-                            Browse menu
-                            <ArrowRight className="ml-2 h-4 w-4" />
-                        </Link>
-                    </Button>
-                </div>
-            </div>
-        );
     }
 
     if (loading) {
