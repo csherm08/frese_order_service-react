@@ -9,7 +9,7 @@
   publish = ".next"
 
 [build.environment]
-  NEXT_PUBLIC_API_URL = "https://frese-bakery-backend-app-staging-eqjx4stexa-ue.a.run.app/api"
+  NEXT_PUBLIC_API_URL = "https://frese-bakery-backend-app-eqjx4stexa-ue.a.run.app/api"
   NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY = "pk_test_51KasQqEZvpspKOfSlXnGLRy8IxkOOIZfo5bSREuWGPiK4HCkRyPaSy3m6TqFll4shlG3czSvOiE6eeUEUBG4Ueat00nSgYii4r"
 
 # Ensure .well-known directory is served correctly for Apple Pay verification
