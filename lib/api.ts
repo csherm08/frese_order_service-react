@@ -109,7 +109,10 @@ export async function processOrderAndPay(order: any, paymentIntentInfo: any) {
 }
 
 export async function getRegularTimeslots(daysOut: number = 6) {
-    const response = await fetch(`${API_URL}/orders/availableTimes/${daysOut}`);
+    // Pass storefront mode so plugpower's hours (Mon-Wed 11-13) are used
+    // instead of main's (Fri-Sat). Backend filters timeslots by site.
+    const site = getOrderSiteMode();
+    const response = await fetch(`${API_URL}/orders/availableTimes/${daysOut}?site=${site}`);
 
     if (!response.ok) {
         throw new Error('Failed to fetch regular timeslots');
