@@ -277,7 +277,7 @@ export default function CheckoutPage() {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 py-8">
+        <div className="min-h-svh bg-gray-50 py-8">
             <div className="container mx-auto px-4 max-w-4xl">
                 {step === 'time' ? (
                     <button onClick={() => router.back()} className="inline-flex items-center text-gray-600 hover:text-gray-900 mb-6">

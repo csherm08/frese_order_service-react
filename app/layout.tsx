@@ -46,7 +46,7 @@ export default function RootLayout({
         <StartupLogger />
         <CartProvider>
           <Header />
-          <main className="min-h-screen">
+          <main className="min-h-svh">
             {children}
           </main>
           <Toaster richColors position="top-center" />
