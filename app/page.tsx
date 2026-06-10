@@ -52,37 +52,43 @@ export default function HomePage() {
   }
   return (
     <div className="flex flex-col">
-      {/* Hero Section - Added background image and improved tagline */}
-      <section className="relative py-24 md:py-32 overflow-hidden">
+      {/* Hero Section — storefront photo with a warm scrim for a heritage feel */}
+      <section className="relative flex items-center min-h-[72vh] overflow-hidden">
         <div className="absolute inset-0">
           <Image
-            src="/freses_front.jpg"
-            alt="Frese's Bakery"
+            src="/frese_front_bakery.jpg"
+            alt="Frese's Bakery storefront"
             fill
-            className="object-cover"
+            className="object-cover object-center"
             priority
           />
-          <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-black/60" />
+          {/* Darken top + bottom for nav and text legibility, leave the middle readable */}
+          <div className="absolute inset-0 bg-gradient-to-b from-black/75 via-black/45 to-black/80" />
+          {/* Subtle warm duotone over the B&W photo to tie it to the brand */}
+          <div className="absolute inset-0 bg-[#6b3d0f]/25 mix-blend-multiply" />
         </div>
         <div className="container mx-auto px-4 relative z-10">
           <div className="flex flex-col items-center text-center space-y-6 max-w-3xl mx-auto">
-            <h1 className="text-5xl md:text-6xl font-bold tracking-tight text-white">
+            <span className="inline-flex items-center rounded-full border border-white/25 bg-white/10 px-4 py-1.5 text-xs sm:text-sm font-medium uppercase tracking-[0.2em] text-white/90 backdrop-blur-sm">
+              Italian Bakery · Ravena, NY
+            </span>
+            <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-white drop-shadow-[0_2px_16px_rgba(0,0,0,0.65)]">
               Fresh Baked Goods
               <span className="block text-[#f5991c]">Since 1920</span>
             </h1>
-            <p className="text-xl text-white/90 max-w-2xl">
+            <p className="text-lg md:text-xl text-white/90 max-w-2xl drop-shadow-[0_1px_10px_rgba(0,0,0,0.8)]">
               Four generations of baking tradition. From our ovens to your table — fresh bread, legendary fried chicken,
               and homemade pastries made with recipes passed down since 1920.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 pt-4">
-              <Button asChild size="lg" className="text-lg bg-[#f5991c] hover:bg-[#d9850f] text-white">
+              <Button asChild size="lg" className="text-lg bg-[#f5991c] hover:bg-[#d9850f] text-white shadow-lg shadow-black/30">
                 <Link href="/order">Order Now</Link>
               </Button>
               <Button
                 asChild
                 variant="outline"
                 size="lg"
-                className="text-lg bg-white/10 border-white text-white hover:bg-white hover:text-[#d9850f]"
+                className="text-lg bg-white/10 border-white/70 text-white backdrop-blur-sm hover:bg-white hover:text-[#d9850f]"
               >
                 <Link href="/catering">Catering</Link>
               </Button>

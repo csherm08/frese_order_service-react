@@ -1,6 +1,7 @@
 "use client"
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { ShoppingCart, Menu } from 'lucide-react';
 import { useCart } from '@/contexts/CartContext';
 import { Button } from './ui/button';
@@ -15,12 +16,21 @@ export default function Header() {
 
     return (
         <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-            <div className="container flex h-16 items-center justify-between px-4">
+            <div className="flex h-20 w-full items-center justify-between px-4 sm:px-6 lg:px-8">
                 <div className="flex items-center gap-6">
-                    <Link href="/" className="flex items-center space-x-2">
-                        <div className="text-2xl font-bold text-primary">
-                            {siteTitle}
-                        </div>
+                    <Link href="/" className="flex items-center" aria-label={siteTitle}>
+                        {siteMode === 'main' ? (
+                            <Image
+                                src="/freseLogo.png"
+                                alt="Frese's Bakery"
+                                width={210}
+                                height={160}
+                                className="h-14 w-auto"
+                                priority
+                            />
+                        ) : (
+                            <span className="text-2xl font-bold text-primary">{siteTitle}</span>
+                        )}
                     </Link>
 
                     <nav className="hidden md:flex gap-6 items-center">
