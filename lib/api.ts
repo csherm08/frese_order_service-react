@@ -108,6 +108,57 @@ export async function processOrderAndPay(order: any, paymentIntentInfo: any) {
     return response.json();
 }
 
+// --- Catering -----------------------------------------------------------------
+
+export interface CateringRequestInput {
+    name: string;
+    email: string;
+    phone?: string;
+    eventDate?: string;
+    guestCount?: number;
+    serviceType?: string;
+    eventType?: string;
+    notes?: string;
+}
+
+export async function submitCateringRequest(data: CateringRequestInput) {
+    const response = await fetch(`${API_URL}/catering/request`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+    if (!response.ok) {
+        const error = await response.json().catch(() => ({ error: 'Failed to submit request' }));
+        throw new Error(error.error || 'Failed to submit request');
+    }
+    return response.json();
+}
+
+export async function fetchCateringDeposit(token: string) {
+    const response = await fetch(`${API_URL}/catering/deposit/${token}`);
+    if (!response.ok) {
+        if (response.status === 404) throw new Error('This deposit link is invalid or has expired.');
+        throw new Error('Failed to load deposit details');
+    }
+    return response.json();
+}
+
+export async function payCateringDeposit(
+    token: string,
+    paymentInfo: { intent: string; payment_method: string },
+) {
+    const response = await fetch(`${API_URL}/catering/deposit/${token}/pay`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paymentInfo }),
+    });
+    if (!response.ok) {
+        const error = await response.json().catch(() => ({ error: 'Payment failed' }));
+        throw new Error(error.error || 'Payment failed');
+    }
+    return response.json();
+}
+
 export async function getRegularTimeslots(daysOut: number = 6) {
     // Pass storefront mode so plugpower's hours (Mon-Wed 11-13) are used
     // instead of main's (Fri-Sat). Backend filters timeslots by site.
