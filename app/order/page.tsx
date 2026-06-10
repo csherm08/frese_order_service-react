@@ -82,6 +82,66 @@ export default function OrderPage() {
                     </div>
                 )}
 
+                {/* Specials — wide action buttons, shown above the regular menu */}
+                {hasAvailableSpecials && (
+                    <div className="space-y-3">
+                        <h2 className="text-2xl font-semibold">Today's Specials</h2>
+                        <div className="space-y-3">
+                            {availableSpecials.map((special) => {
+                                const disabled = lockedToRegular || (lockedToSpecial && lockedSpecialId !== special.id);
+                                return (
+                                    <Link
+                                        key={special.id}
+                                        href={`/order/special/${special.id}`}
+                                        aria-disabled={disabled}
+                                        onClick={(e) => { if (disabled) e.preventDefault(); }}
+                                        className={cn(
+                                            'flex items-center gap-4 w-full rounded-lg border-2 border-orange-300 bg-gradient-to-r from-orange-50 to-amber-50 p-4',
+                                            disabled
+                                                ? 'opacity-60 pointer-events-none'
+                                                : 'hover:shadow-lg hover:border-orange-400 transition-all duration-200 cursor-pointer'
+                                        )}
+                                    >
+                                        {special.photoUrl ? (
+                                            <CachedImage
+                                                src={special.photoUrl}
+                                                alt={special.name}
+                                                fill
+                                                containerClassName="w-14 h-14 rounded-md overflow-hidden flex-shrink-0"
+                                            />
+                                        ) : (
+                                            <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-md bg-orange-100">
+                                                <Sparkles className="h-7 w-7 text-orange-500" />
+                                            </div>
+                                        )}
+
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                                <span className="font-semibold text-lg truncate">{special.name}</span>
+                                                {(() => {
+                                                    // Backend leaves `active` null; derive status from the date window.
+                                                    const upcoming = new Date(special.start) > now;
+                                                    return (
+                                                        <Badge variant={upcoming ? 'secondary' : 'default'} className="text-xs">
+                                                            {upcoming ? 'Coming soon' : 'Available now'}
+                                                        </Badge>
+                                                    );
+                                                })()}
+                                            </div>
+                                            <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
+                                                <Calendar className="h-3 w-3 flex-shrink-0" />
+                                                <span className="truncate">{formatSpecialDateRange(special.start, special.end)}</span>
+                                            </div>
+                                        </div>
+
+                                        <ArrowRight className="h-5 w-5 text-orange-500 flex-shrink-0" />
+                                    </Link>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
+
                 {/* Regular Menu — primary option */}
                 <Card className={cn(
                     'relative overflow-hidden border-2 group flex flex-col',
@@ -133,54 +193,6 @@ export default function OrderPage() {
                     </Link>
                 </Card>
 
-                {/* Specials — smaller cards below */}
-                {hasAvailableSpecials && (
-                    <div className="space-y-4">
-                        <h2 className="text-2xl font-semibold">Available Specials</h2>
-                        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {availableSpecials.map((special) => {
-                                const disabled = lockedToRegular || (lockedToSpecial && lockedSpecialId !== special.id);
-                                return (
-                                <Link
-                                    key={special.id}
-                                    href={`/order/special/${special.id}`}
-                                    aria-disabled={disabled}
-                                    onClick={(e) => { if (disabled) e.preventDefault(); }}
-                                >
-                                    <Card className={cn(
-                                        'h-full',
-                                        disabled
-                                            ? 'opacity-60 pointer-events-none'
-                                            : 'hover:shadow-lg transition-shadow cursor-pointer'
-                                    )}>
-                                        {special.photoUrl ? (
-                                            <CachedImage
-                                                src={special.photoUrl}
-                                                alt={special.name}
-                                                fill
-                                                containerClassName="w-full h-32"
-                                            />
-                                        ) : (
-                                            <div className="w-full h-32 bg-gradient-to-br from-orange-100 to-amber-100 flex items-center justify-center">
-                                                <Sparkles className="h-12 w-12 text-orange-400" />
-                                            </div>
-                                        )}
-                                        <CardHeader className="pb-2">
-                                            <CardTitle className="text-lg">{special.name}</CardTitle>
-                                        </CardHeader>
-                                        <CardContent>
-                                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                                                <Calendar className="h-3 w-3 flex-shrink-0" />
-                                                <span>{formatSpecialDateRange(special.start, special.end)}</span>
-                                            </div>
-                                        </CardContent>
-                                    </Card>
-                                </Link>
-                                );
-                            })}
-                        </div>
-                    </div>
-                )}
             </div>
         </div>
     );
