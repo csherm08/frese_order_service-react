@@ -5,7 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-const RECIPIENT = 'fresescatering@gmail.com';
+import { CheckCircle, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
+import { submitCateringRequest } from '@/lib/api';
 
 const SERVICE_OPTIONS = [
     { value: 'pickup', label: 'Pick up' },
@@ -26,6 +28,7 @@ const EVENT_TYPES = [
 
 export default function CateringQuoteForm() {
     const [name, setName] = useState('');
+    const [email, setEmail] = useState('');
     const [eventDateTime, setEventDateTime] = useState('');
     const [people, setPeople] = useState('');
     const [phone, setPhone] = useState('');
@@ -33,27 +36,46 @@ export default function CateringQuoteForm() {
     const [eventType, setEventType] = useState('');
     const [eventTypeOther, setEventTypeOther] = useState('');
     const [notes, setNotes] = useState('');
+    const [submitting, setSubmitting] = useState(false);
+    const [submitted, setSubmitted] = useState(false);
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        const serviceLabel = SERVICE_OPTIONS.find((o) => o.value === serviceType)?.label ?? serviceType;
         const eventTypeText = eventType === 'Other' && eventTypeOther.trim()
             ? `Other — ${eventTypeOther.trim()}`
             : eventType;
-        const subject = 'Catering Quote Request';
-        const body = [
-            `Name: ${name}`,
-            `Phone number: ${phone}`,
-            `Date and time of event: ${eventDateTime}`,
-            `Estimated number of people: ${people}`,
-            `Service type: ${serviceLabel}`,
-            `Type of event: ${eventTypeText}`,
-            '',
-            'Notes:',
-            notes || '(none)',
-        ].join('\n');
-        window.location.href = `mailto:${RECIPIENT}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+
+        setSubmitting(true);
+        try {
+            await submitCateringRequest({
+                name,
+                email,
+                phone,
+                eventDate: eventDateTime || undefined,
+                guestCount: people ? parseInt(people, 10) : undefined,
+                serviceType,
+                eventType: eventTypeText,
+                notes,
+            });
+            setSubmitted(true);
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
+            setSubmitting(false);
+        }
     };
+
+    if (submitted) {
+        return (
+            <div className="flex flex-col items-center text-center gap-3 py-8">
+                <CheckCircle className="h-12 w-12 text-[#f5991c]" />
+                <h3 className="text-2xl font-semibold">Request received!</h3>
+                <p className="text-muted-foreground max-w-md">
+                    Thanks, {name.split(' ')[0] || 'there'}! We&apos;ll review the details and email you at{' '}
+                    <span className="font-medium">{email}</span> with a proposed date and a link to reserve it.
+                </p>
+            </div>
+        );
+    }
 
     return (
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -65,6 +87,16 @@ export default function CateringQuoteForm() {
                         type="text"
                         value={name}
                         onChange={(e) => setName(e.target.value)}
+                        required
+                    />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="quote-email">Email</Label>
+                    <Input
+                        id="quote-email"
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
                         required
                     />
                 </div>
@@ -153,8 +185,15 @@ export default function CateringQuoteForm() {
                 />
             </div>
 
-            <Button type="submit" size="lg" className="w-full sm:w-auto">
-                Request a Quote
+            <Button type="submit" size="lg" disabled={submitting} className="w-full sm:w-auto">
+                {submitting ? (
+                    <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Sending...
+                    </>
+                ) : (
+                    'Request a Quote'
+                )}
             </Button>
         </form>
     );
