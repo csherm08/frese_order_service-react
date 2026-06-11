@@ -159,6 +159,26 @@ export async function payCateringDeposit(
     return response.json();
 }
 
+// --- News / events carousel ---------------------------------------------------
+
+export interface NewsItem {
+    id: number;
+    title: string;
+    description?: string;
+    image?: string;
+    highlight?: boolean;
+}
+
+export async function fetchNews(): Promise<NewsItem[]> {
+    try {
+        const response = await fetch(`${API_URL}/news`);
+        if (!response.ok) return [];
+        return await response.json();
+    } catch {
+        return [];
+    }
+}
+
 export async function getRegularTimeslots(daysOut: number = 6) {
     // Pass storefront mode so plugpower's hours (Mon-Wed 11-13) are used
     // instead of main's (Fri-Sat). Backend filters timeslots by site.
