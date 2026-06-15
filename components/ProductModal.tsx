@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Product, CartItem, ProductSize, SelectionOption, AddOnOption } from '@/types/products';
+import { resolveOptionsForSize } from '@/lib/productOptions';
 import { formatCurrency } from '@/lib/utils';
 import { useCart } from '@/contexts/CartContext';
 import { toast } from 'sonner';
@@ -74,21 +75,21 @@ export default function ProductModal({ product, open, onClose, mode }: ProductMo
         setQuantity((q) => Math.min(q, Math.max(1, maxSelectable || 1)));
     }, [open, maxSelectable]);
 
-    // Get the current size key for looking up selections/addons
-    const getSizeKey = (): string => {
-        return selectedSize?.size || 'size';
-    };
+    const hasSizes = !!(product.product_sizes && product.product_sizes.length > 0);
+
+    // Resolve options for the current size (handles sized + size-less keying);
+    // see lib/productOptions for the rules + tests.
+    const optionsForCurrentSize = <T,>(bySize: Record<string, T[]> | undefined): T[] | undefined =>
+        resolveOptionsForSize(bySize, selectedSize?.size ?? null, hasSizes);
 
     // Get available selections for current size
     const getSelectionsForCurrentSize = () => {
         if (!product.product_selection_values) return {};
-        const sizeKey = getSizeKey();
         const result: Record<string, SelectionOption[]> = {};
 
         Object.keys(product.product_selection_values).forEach(key => {
-            if (product.product_selection_values![key][sizeKey]) {
-                result[key] = product.product_selection_values![key][sizeKey];
-            }
+            const opts = optionsForCurrentSize(product.product_selection_values![key]);
+            if (opts) result[key] = opts;
         });
 
         return result;
@@ -97,13 +98,11 @@ export default function ProductModal({ product, open, onClose, mode }: ProductMo
     // Get available add-ons for current size
     const getAddOnsForCurrentSize = () => {
         if (!product.product_add_on_values) return {};
-        const sizeKey = getSizeKey();
         const result: Record<string, AddOnOption[]> = {};
 
         Object.keys(product.product_add_on_values).forEach(key => {
-            if (product.product_add_on_values![key][sizeKey]) {
-                result[key] = product.product_add_on_values![key][sizeKey];
-            }
+            const opts = optionsForCurrentSize(product.product_add_on_values![key]);
+            if (opts) result[key] = opts;
         });
 
         return result;
