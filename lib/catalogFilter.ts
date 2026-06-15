@@ -19,7 +19,11 @@ export function filterProductsForOrderSite(
   mode: 'main' | 'plugpower'
 ): Product[] {
   const specialId = types.find((t) => t.name === 'Special')?.id;
-  const cateringId = types.find((t) => t.name === 'Catering')?.id;
+  // Hide every catering type from /menu — the generic "Catering" plus the
+  // per-menu catering types (Full Service / Barbecue / A La Carte Catering).
+  const cateringIds = new Set(
+    types.filter((t) => t.name.toLowerCase().includes('catering')).map((t) => t.id)
+  );
   const plugPowerId = types.find((t) => t.name === PLUG_POWER_TYPE_NAME)?.id;
 
   if (mode === 'plugpower') {
@@ -30,7 +34,7 @@ export function filterProductsForOrderSite(
   return products.filter((p) => {
     if (specialId != null && p.typeId === specialId) return false;
     if (p.typeId === SUPERBOWL_TYPE_ID) return false;
-    if (cateringId != null && p.typeId === cateringId) return false;
+    if (cateringIds.has(p.typeId)) return false;
     if (plugPowerId != null && p.typeId === plugPowerId) return false;
     return true;
   });
