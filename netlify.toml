@@ -13,6 +13,9 @@
   # live publishable key must be paired — staging values live in netlify.toml.staging.
   NEXT_PUBLIC_API_URL = "https://frese-bakery-backend-app-eqjx4stexa-ue.a.run.app/api"
   NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY = "pk_live_51KasQqEZvpspKOfSzW7sdVtBJmH1pVuJ7MkqdkFvwMqH1FG2RkSdpI5qDqEzsxeNgUOwODddzocbKqlRu90DAnMA00Y537FNq1"
+  # Public Sentry DSN (client-side ingest key — safe to commit). Tagged main vs
+  # plugpower via NEXT_PUBLIC_ORDER_SITE in the sentry.*.config.ts files.
+  NEXT_PUBLIC_SENTRY_DSN = "https://fbd5f3aed24a3b563ade13a784798a4f@o4511571308642304.ingest.us.sentry.io/4511571310870528"
 
 # Ensure .well-known directory is served correctly for Apple Pay verification
 [[redirects]]
