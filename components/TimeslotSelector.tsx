@@ -285,7 +285,7 @@ export default function TimeslotSelector({ items, onSelect, loading: externalLoa
                     )}
 
                     {selectedTimeslot && (
-                        <div className="pt-2 border-t">
+                        <div className="sticky bottom-0 z-10 -mx-6 border-t bg-background/95 px-6 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] backdrop-blur supports-[backdrop-filter]:bg-background/80">
                             <Button onClick={handleConfirm} disabled={externalLoading} size="lg" className="w-full">
                                 {externalLoading ? (
                                     <>

@@ -132,21 +132,23 @@ function CheckoutForm({
                     }
                 }}
             />
-            <Button
-                type="submit"
-                disabled={!stripe || loading}
-                className="w-full"
-                size="lg"
-            >
-                {loading ? (
-                    <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Processing...
-                    </>
-                ) : (
-                    `Pay ${formatCurrency(total)}`
-                )}
-            </Button>
+            <div className="sticky bottom-0 z-10 -mx-6 border-t bg-background/95 px-6 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] backdrop-blur supports-[backdrop-filter]:bg-background/80">
+                <Button
+                    type="submit"
+                    disabled={!stripe || loading}
+                    className="w-full"
+                    size="lg"
+                >
+                    {loading ? (
+                        <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Processing...
+                        </>
+                    ) : (
+                        `Pay ${formatCurrency(total)}`
+                    )}
+                </Button>
+            </div>
         </form>
     );
 }
