@@ -17,6 +17,7 @@ import {
     groupCateringProducts,
     buildLineItems,
     estimateTotal,
+    parseMinQty,
     type CateringMenuGroup,
 } from '@/lib/cateringMenu';
 import type { Product } from '@/types/products';
@@ -194,6 +195,7 @@ export default function CateringQuoteBuilder() {
                         {activeGroup.products.map((product) => {
                             const qty = selections[product.id] || 0;
                             const selected = qty > 0;
+                            const min = parseMinQty(product.description); // "Min 50" → floor of 50
                             return (
                                 <div
                                     key={product.id}
@@ -210,18 +212,22 @@ export default function CateringQuoteBuilder() {
                                                 {activeGroup.perPerson ? ' / person' : ' each'}
                                             </span>
                                         </p>
-                                        {activeGroup.perPerson && (
-                                            <p className="text-xs text-muted-foreground">Quantity = number of guests served</p>
+                                        {(activeGroup.perPerson || min > 1) && (
+                                            <p className="text-xs text-muted-foreground">
+                                                {activeGroup.perPerson ? 'Quantity = number of guests served' : ''}
+                                                {min > 1 ? `${activeGroup.perPerson ? ' · ' : ''}Minimum ${min}` : ''}
+                                            </p>
                                         )}
                                     </div>
 
                                     <div className="mt-3 flex items-center gap-2">
-                                        <Button type="button" variant="outline" size="icon" className="h-8 w-8 shrink-0" onClick={() => setQty(product.id, qty - 1)} disabled={qty === 0}>
+                                        {/* Valid quantity is 0 (not ordered) or ≥ the product minimum. */}
+                                        <Button type="button" variant="outline" size="icon" className="h-8 w-8 shrink-0" onClick={() => setQty(product.id, qty <= min ? 0 : qty - 1)} disabled={qty === 0}>
                                             <Minus className="h-4 w-4" />
                                         </Button>
                                         <Input
                                             type="number"
-                                            min={0}
+                                            min={min}
                                             inputMode="numeric"
                                             aria-label={`Quantity for ${product.title}`}
                                             value={qty || ''}
@@ -230,9 +236,10 @@ export default function CateringQuoteBuilder() {
                                                 const raw = parseInt(e.target.value, 10);
                                                 setQty(product.id, Number.isFinite(raw) ? raw : 0);
                                             }}
+                                            onBlur={() => { if (qty > 0 && qty < min) setQty(product.id, min); }}
                                             className="h-8 w-16 text-center"
                                         />
-                                        <Button type="button" variant="outline" size="icon" className="h-8 w-8 shrink-0" onClick={() => setQty(product.id, qty + 1)}>
+                                        <Button type="button" variant="outline" size="icon" className="h-8 w-8 shrink-0" onClick={() => setQty(product.id, qty < min ? min : qty + 1)}>
                                             <Plus className="h-4 w-4" />
                                         </Button>
                                         {selected && (

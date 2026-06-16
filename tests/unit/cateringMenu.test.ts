@@ -4,6 +4,7 @@ import {
     groupCateringProducts,
     buildLineItems,
     estimateTotal,
+    parseMinQty,
 } from '@/lib/cateringMenu'
 
 const TYPES = [
@@ -41,6 +42,19 @@ describe('groupCateringProducts', () => {
         expect(groups.find((g) => g.typeId === 17)!.products).toHaveLength(2)
         expect(groups.find((g) => g.typeId === 17)!.perPerson).toBe(true)
         expect(groups.find((g) => g.typeId === 19)!.perPerson).toBe(false)
+    })
+})
+
+describe('parseMinQty', () => {
+    it('reads a "Min N" minimum from the description', () => {
+        expect(parseMinQty('Min 50 guests, 3hr. Choose 3 hot + 3 cold')).toBe(50)
+        expect(parseMinQty('Min 50. Hors d\'oeuvres, 3 salads')).toBe(50)
+        expect(parseMinQty('Min. 75 guests')).toBe(75)
+    })
+    it('defaults to 1 when no minimum is stated or missing', () => {
+        expect(parseMinQty('Pulled Pork, served by the tray')).toBe(1)
+        expect(parseMinQty('')).toBe(1)
+        expect(parseMinQty(undefined)).toBe(1)
     })
 })
 

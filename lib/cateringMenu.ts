@@ -34,6 +34,18 @@ export function isPerPersonMenu(typeName: string): boolean {
     return n.includes('full service') || n.includes('barbecue');
 }
 
+/**
+ * Minimum order quantity parsed from a product description (e.g. "Min 50",
+ * "Min. 50 guests"). Used as the floor for the quantity input. Defaults to 1
+ * when no minimum is stated.
+ */
+export function parseMinQty(description?: string | null): number {
+    if (!description) return 1;
+    const m = description.match(/\bmin\.?\s*(\d+)/i);
+    const n = m ? parseInt(m[1], 10) : NaN;
+    return Number.isFinite(n) && n > 0 ? n : 1;
+}
+
 /** Group catering products (types whose name contains "catering") by menu, dropping empty menus. */
 export function groupCateringProducts(
     products: Product[],
