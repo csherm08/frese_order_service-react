@@ -119,6 +119,10 @@ export interface CateringRequestInput {
     serviceType?: string;
     eventType?: string;
     notes?: string;
+    /** Itemized selections from the quote builder (optional — free-text requests omit it). */
+    lineItems?: import('@/lib/cateringMenu').CateringLineItem[];
+    /** Estimated total in cents (matches quotedPrice/depositAmount units on the backend). */
+    estimatedTotal?: number;
 }
 
 export async function submitCateringRequest(data: CateringRequestInput) {

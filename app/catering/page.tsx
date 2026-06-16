@@ -1,7 +1,7 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Phone, Mail, Users, Calendar, CheckCircle, FileText } from 'lucide-react';
-import CateringQuoteForm from '@/components/CateringQuoteForm';
+import CateringQuoteBuilder from '@/components/CateringQuoteBuilder';
 
 const CATERING_MENUS = [
     { title: 'Full Service Menu', file: '/catering/Full Service Menu 2026.pdf' },
@@ -47,12 +47,12 @@ export default function CateringPage() {
                 <Card>
                     <CardContent className="pt-6 space-y-4">
                         <div className="text-center space-y-2">
-                            <h2 className="text-3xl font-bold">Request a Quote</h2>
+                            <h2 className="text-3xl font-bold">Build Your Quote</h2>
                             <p className="text-muted-foreground">
-                                Tell us about your event and we&apos;ll get back to you with a custom quote.
+                                Pick your menu and tell us about your event — we&apos;ll confirm a final quote by email.
                             </p>
                         </div>
-                        <CateringQuoteForm />
+                        <CateringQuoteBuilder />
                     </CardContent>
                 </Card>
 
