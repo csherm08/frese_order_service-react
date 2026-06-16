@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { CheckCircle, Loader2, Plus, Minus, Check, Users } from 'lucide-react';
+import { CheckCircle, Loader2, Plus, Minus } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatCurrency } from '@/lib/utils';
 import { fetchProducts, fetchProductTypes, submitCateringRequest } from '@/lib/api';
@@ -45,11 +45,6 @@ export default function CateringQuoteBuilder() {
     const [submitting, setSubmitting] = useState(false);
     const [submitted, setSubmitted] = useState(false);
 
-    const guestCount = useMemo(() => {
-        const n = parseInt(people, 10);
-        return Number.isFinite(n) && n > 0 ? n : 0;
-    }, [people]);
-
     useEffect(() => {
         (async () => {
             try {
@@ -63,11 +58,8 @@ export default function CateringQuoteBuilder() {
         })();
     }, []);
 
-    const lineItems = useMemo(() => buildLineItems(groups, selections, guestCount), [groups, selections, guestCount]);
+    const lineItems = useMemo(() => buildLineItems(groups, selections), [groups, selections]);
     const estimate = useMemo(() => estimateTotal(lineItems), [lineItems]);
-
-    const togglePerPerson = (productId: number) =>
-        setSelections((prev) => ({ ...prev, [productId]: prev[productId] ? 0 : 1 }));
 
     const setQty = (productId: number, qty: number) =>
         setSelections((prev) => ({ ...prev, [productId]: Math.max(0, qty) }));
@@ -85,7 +77,7 @@ export default function CateringQuoteBuilder() {
                 email,
                 phone,
                 eventDate: eventDateTime || undefined,
-                guestCount: guestCount || undefined,
+                guestCount: people ? parseInt(people, 10) : undefined,
                 serviceType,
                 eventType: eventTypeText,
                 notes,
@@ -122,29 +114,15 @@ export default function CateringQuoteBuilder() {
 
     return (
         <form onSubmit={handleSubmit} className="space-y-10">
-            {/* 1. Guests — drives per-person pricing */}
-            <section className="space-y-2">
-                <Label htmlFor="quote-people" className="text-base font-semibold flex items-center gap-2">
-                    <Users className="h-4 w-4" /> How many guests?
-                </Label>
-                <Input
-                    id="quote-people"
-                    type="number"
-                    min="1"
-                    value={people}
-                    onChange={(e) => setPeople(e.target.value)}
-                    placeholder="e.g. 50"
-                    className="max-w-[160px]"
-                    required
-                />
-                <p className="text-sm text-muted-foreground">
-                    Per-person menu prices update with your guest count.
-                </p>
-            </section>
-
-            {/* 2. Build the menu */}
+            {/* Build the menu */}
             <section className="space-y-8">
-                <h3 className="text-2xl font-bold">Build your menu</h3>
+                <div className="space-y-1">
+                    <h3 className="text-2xl font-bold">Build your menu</h3>
+                    <p className="text-sm text-muted-foreground">
+                        Set a quantity for each item you&apos;d like. For per-person items (buffets, full service),
+                        the quantity is the number of guests it should serve.
+                    </p>
+                </div>
                 {groups.map((group) => (
                     <div key={group.typeId} className="space-y-3">
                         <div className="flex items-baseline justify-between gap-2">
@@ -162,47 +140,32 @@ export default function CateringQuoteBuilder() {
                                         key={product.id}
                                         className={`rounded-lg border p-4 transition-colors ${selected ? 'border-[#f5991c] bg-orange-50/50' : 'border-input'}`}
                                     >
-                                        <div className="flex items-start justify-between gap-3">
-                                            <div className="min-w-0">
-                                                <p className="font-medium">{product.title}</p>
-                                                {product.description && (
-                                                    <p className="text-sm text-muted-foreground line-clamp-2">{product.description}</p>
-                                                )}
-                                                <p className="text-sm font-semibold mt-1">
-                                                    {formatCurrency(product.price)}
-                                                    <span className="font-normal text-muted-foreground">
-                                                        {group.perPerson ? ' / person' : ' each'}
-                                                    </span>
-                                                </p>
-                                            </div>
+                                        <div className="min-w-0">
+                                            <p className="font-medium">{product.title}</p>
+                                            {product.description && (
+                                                <p className="text-sm text-muted-foreground line-clamp-2">{product.description}</p>
+                                            )}
+                                            <p className="text-sm font-semibold mt-1">
+                                                {formatCurrency(product.price)}
+                                                <span className="font-normal text-muted-foreground">
+                                                    {group.perPerson ? ' / person' : ' each'}
+                                                </span>
+                                            </p>
+                                            {group.perPerson && (
+                                                <p className="text-xs text-muted-foreground">Quantity = number of guests served</p>
+                                            )}
                                         </div>
 
-                                        <div className="mt-3">
-                                            {group.perPerson ? (
-                                                <Button
-                                                    type="button"
-                                                    variant={selected ? 'default' : 'outline'}
-                                                    size="sm"
-                                                    onClick={() => togglePerPerson(product.id)}
-                                                    className="w-full"
-                                                >
-                                                    {selected ? (
-                                                        <><Check className="h-4 w-4 mr-1" /> Added{guestCount ? ` · ${formatCurrency(product.price * guestCount)}` : ''}</>
-                                                    ) : 'Add to quote'}
-                                                </Button>
-                                            ) : (
-                                                <div className="flex items-center gap-3">
-                                                    <Button type="button" variant="outline" size="icon" className="h-8 w-8" onClick={() => setQty(product.id, qty - 1)} disabled={qty === 0}>
-                                                        <Minus className="h-4 w-4" />
-                                                    </Button>
-                                                    <span className="w-8 text-center font-medium">{qty}</span>
-                                                    <Button type="button" variant="outline" size="icon" className="h-8 w-8" onClick={() => setQty(product.id, qty + 1)}>
-                                                        <Plus className="h-4 w-4" />
-                                                    </Button>
-                                                    {qty > 0 && (
-                                                        <span className="ml-auto text-sm font-semibold">{formatCurrency(product.price * qty)}</span>
-                                                    )}
-                                                </div>
+                                        <div className="mt-3 flex items-center gap-3">
+                                            <Button type="button" variant="outline" size="icon" className="h-8 w-8" onClick={() => setQty(product.id, qty - 1)} disabled={qty === 0}>
+                                                <Minus className="h-4 w-4" />
+                                            </Button>
+                                            <span className="w-10 text-center font-medium">{qty}</span>
+                                            <Button type="button" variant="outline" size="icon" className="h-8 w-8" onClick={() => setQty(product.id, qty + 1)}>
+                                                <Plus className="h-4 w-4" />
+                                            </Button>
+                                            {selected && (
+                                                <span className="ml-auto text-sm font-semibold">{formatCurrency(product.price * qty)}</span>
                                             )}
                                         </div>
                                     </div>
@@ -217,7 +180,7 @@ export default function CateringQuoteBuilder() {
             <section className="rounded-lg border bg-muted/40 p-5 space-y-3">
                 <h3 className="text-lg font-semibold">Your quote</h3>
                 {lineItems.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">Add items above to build your estimate.</p>
+                    <p className="text-sm text-muted-foreground">Set a quantity on the items above to build your estimate.</p>
                 ) : (
                     <>
                         <ul className="space-y-1.5 text-sm">
@@ -235,9 +198,6 @@ export default function CateringQuoteBuilder() {
                             <span>Estimated total</span>
                             <span className="text-[#f5991c]">{formatCurrency(estimate)}</span>
                         </div>
-                        {lineItems.some((i) => i.perPerson) && !guestCount && (
-                            <p className="text-sm text-amber-700">Enter a guest count above to price per-person items.</p>
-                        )}
                         <p className="text-xs text-muted-foreground">
                             This is an estimate — we&apos;ll confirm your final quote by email before any deposit.
                         </p>
@@ -245,7 +205,7 @@ export default function CateringQuoteBuilder() {
                 )}
             </section>
 
-            {/* 3. Event details */}
+            {/* Event details */}
             <section className="space-y-6">
                 <h3 className="text-2xl font-bold">Your details</h3>
                 <div className="grid sm:grid-cols-2 gap-4">
@@ -264,6 +224,10 @@ export default function CateringQuoteBuilder() {
                     <div className="space-y-2">
                         <Label htmlFor="quote-datetime">Date and time of event</Label>
                         <Input id="quote-datetime" type="datetime-local" value={eventDateTime} onChange={(e) => setEventDateTime(e.target.value)} required />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="quote-people">Estimated number of guests</Label>
+                        <Input id="quote-people" type="number" min="1" value={people} onChange={(e) => setPeople(e.target.value)} required />
                     </div>
                 </div>
 

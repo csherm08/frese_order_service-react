@@ -47,26 +47,18 @@ describe('groupCateringProducts', () => {
 describe('buildLineItems + estimateTotal', () => {
     const groups = groupCateringProducts(PRODUCTS, TYPES)
 
-    it('multiplies per-person items by guest count (not the selection value)', () => {
-        const items = buildLineItems(groups, { 207: 1 }, 50)
-        expect(items).toHaveLength(1)
-        expect(items[0]).toMatchObject({ productId: 207, perPerson: true, quantity: 50, lineTotal: 1400 })
+    it('prices every item as quantity × unit price (per-person keeps its label flag)', () => {
+        const perPerson = buildLineItems(groups, { 207: 50 }) // buffet, qty = guests served
+        expect(perPerson[0]).toMatchObject({ productId: 207, perPerson: true, quantity: 50, lineTotal: 1400 })
+
+        const aLaCarte = buildLineItems(groups, { 400: 3 })
+        expect(aLaCarte[0]).toMatchObject({ productId: 400, perPerson: false, quantity: 3, lineTotal: 135 })
     })
 
-    it('uses the chosen quantity for per-item products', () => {
-        const items = buildLineItems(groups, { 400: 3 }, 50)
-        expect(items[0]).toMatchObject({ productId: 400, perPerson: false, quantity: 3, lineTotal: 135 })
-    })
-
-    it('ignores unselected (0) items and sums a mixed quote', () => {
-        const items = buildLineItems(groups, { 207: 1, 400: 2, 999: 0 }, 50)
+    it('ignores 0-qty items and sums a mixed quote', () => {
+        const items = buildLineItems(groups, { 207: 50, 400: 2, 999: 0 })
         // 28*50 + 45*2 = 1400 + 90
         expect(items).toHaveLength(2)
         expect(estimateTotal(items)).toBe(1490)
-    })
-
-    it('per-person lines are 0 until a guest count is entered', () => {
-        const items = buildLineItems(groups, { 208: 1 }, 0)
-        expect(items[0].lineTotal).toBe(0)
     })
 })
