@@ -215,12 +215,24 @@ export default function CateringQuoteBuilder() {
                                         )}
                                     </div>
 
-                                    <div className="mt-3 flex items-center gap-3">
-                                        <Button type="button" variant="outline" size="icon" className="h-8 w-8" onClick={() => setQty(product.id, qty - 1)} disabled={qty === 0}>
+                                    <div className="mt-3 flex items-center gap-2">
+                                        <Button type="button" variant="outline" size="icon" className="h-8 w-8 shrink-0" onClick={() => setQty(product.id, qty - 1)} disabled={qty === 0}>
                                             <Minus className="h-4 w-4" />
                                         </Button>
-                                        <span className="w-10 text-center font-medium">{qty}</span>
-                                        <Button type="button" variant="outline" size="icon" className="h-8 w-8" onClick={() => setQty(product.id, qty + 1)}>
+                                        <Input
+                                            type="number"
+                                            min={0}
+                                            inputMode="numeric"
+                                            aria-label={`Quantity for ${product.title}`}
+                                            value={qty || ''}
+                                            placeholder="0"
+                                            onChange={(e) => {
+                                                const raw = parseInt(e.target.value, 10);
+                                                setQty(product.id, Number.isFinite(raw) ? raw : 0);
+                                            }}
+                                            className="h-8 w-16 text-center"
+                                        />
+                                        <Button type="button" variant="outline" size="icon" className="h-8 w-8 shrink-0" onClick={() => setQty(product.id, qty + 1)}>
                                             <Plus className="h-4 w-4" />
                                         </Button>
                                         {selected && (
