@@ -5,6 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import {
+    AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+    AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { CheckCircle, Loader2, Plus, Minus } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatCurrency } from '@/lib/utils';
@@ -28,10 +32,15 @@ const EVENT_TYPES = [
     'Wedding', 'Birthday', 'Corporate event', 'Holiday party', 'Graduation', 'Funeral / memorial', 'Other',
 ];
 
+const menuLabel = (typeName: string) => typeName.replace(/ Catering$/i, '');
+
 export default function CateringQuoteBuilder() {
     const [groups, setGroups] = useState<CateringMenuGroup[]>([]);
     const [loading, setLoading] = useState(true);
+    const [activeMenuId, setActiveMenuId] = useState<number | null>(null);
     const [selections, setSelections] = useState<Record<number, number>>({});
+    // Confirm when switching menus would discard current picks.
+    const [pendingMenuId, setPendingMenuId] = useState<number | null>(null);
 
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
@@ -49,7 +58,9 @@ export default function CateringQuoteBuilder() {
         (async () => {
             try {
                 const [products, types] = await Promise.all([fetchProducts(), fetchProductTypes()]);
-                setGroups(groupCateringProducts(products as Product[], types));
+                const grouped = groupCateringProducts(products as Product[], types);
+                setGroups(grouped);
+                if (grouped.length > 0) setActiveMenuId(grouped[0].typeId);
             } catch {
                 toast.error('Could not load catering menus. Please refresh or call us at (518) 756-1000.');
             } finally {
@@ -58,8 +69,35 @@ export default function CateringQuoteBuilder() {
         })();
     }, []);
 
-    const lineItems = useMemo(() => buildLineItems(groups, selections), [groups, selections]);
+    const activeGroup = useMemo(
+        () => groups.find((g) => g.typeId === activeMenuId) ?? null,
+        [groups, activeMenuId],
+    );
+    // Catering is from a single menu, so the quote only ever reflects the active one.
+    const lineItems = useMemo(
+        () => buildLineItems(activeGroup ? [activeGroup] : [], selections),
+        [activeGroup, selections],
+    );
     const estimate = useMemo(() => estimateTotal(lineItems), [lineItems]);
+
+    const hasSelections = useMemo(() => Object.values(selections).some((q) => q > 0), [selections]);
+
+    const chooseMenu = (typeId: number) => {
+        if (typeId === activeMenuId) return;
+        if (hasSelections) {
+            setPendingMenuId(typeId); // ask before discarding picks
+        } else {
+            setActiveMenuId(typeId);
+        }
+    };
+
+    const confirmSwitch = () => {
+        if (pendingMenuId != null) {
+            setActiveMenuId(pendingMenuId);
+            setSelections({});
+        }
+        setPendingMenuId(null);
+    };
 
     const setQty = (productId: number, qty: number) =>
         setSelections((prev) => ({ ...prev, [productId]: Math.max(0, qty) }));
@@ -114,67 +152,87 @@ export default function CateringQuoteBuilder() {
 
     return (
         <form onSubmit={handleSubmit} className="space-y-10">
-            {/* Build the menu */}
-            <section className="space-y-8">
+            {/* 1. Choose a single menu */}
+            <section className="space-y-3">
                 <div className="space-y-1">
-                    <h3 className="text-2xl font-bold">Build your menu</h3>
+                    <h3 className="text-2xl font-bold">Choose a menu</h3>
                     <p className="text-sm text-muted-foreground">
-                        Set a quantity for each item you&apos;d like. For per-person items (buffets, full service),
-                        the quantity is the number of guests it should serve.
+                        Catering orders are built from one menu. Pick the style for your event — you can switch,
+                        but that clears your current picks.
                     </p>
                 </div>
-                {groups.map((group) => (
-                    <div key={group.typeId} className="space-y-3">
-                        <div className="flex items-baseline justify-between gap-2">
-                            <h4 className="text-lg font-semibold">{group.typeName.replace(/ Catering$/i, '')}</h4>
-                            <span className="text-xs uppercase tracking-wide text-muted-foreground">
-                                {group.perPerson ? 'Priced per person' : 'Priced per item'}
-                            </span>
-                        </div>
-                        <div className="grid gap-3 sm:grid-cols-2">
-                            {group.products.map((product) => {
-                                const qty = selections[product.id] || 0;
-                                const selected = qty > 0;
-                                return (
-                                    <div
-                                        key={product.id}
-                                        className={`rounded-lg border p-4 transition-colors ${selected ? 'border-[#f5991c] bg-orange-50/50' : 'border-input'}`}
-                                    >
-                                        <div className="min-w-0">
-                                            <p className="font-medium">{product.title}</p>
-                                            {product.description && (
-                                                <p className="text-sm text-muted-foreground line-clamp-2">{product.description}</p>
-                                            )}
-                                            <p className="text-sm font-semibold mt-1">
-                                                {formatCurrency(product.price)}
-                                                <span className="font-normal text-muted-foreground">
-                                                    {group.perPerson ? ' / person' : ' each'}
-                                                </span>
-                                            </p>
-                                            {group.perPerson && (
-                                                <p className="text-xs text-muted-foreground">Quantity = number of guests served</p>
-                                            )}
-                                        </div>
-
-                                        <div className="mt-3 flex items-center gap-3">
-                                            <Button type="button" variant="outline" size="icon" className="h-8 w-8" onClick={() => setQty(product.id, qty - 1)} disabled={qty === 0}>
-                                                <Minus className="h-4 w-4" />
-                                            </Button>
-                                            <span className="w-10 text-center font-medium">{qty}</span>
-                                            <Button type="button" variant="outline" size="icon" className="h-8 w-8" onClick={() => setQty(product.id, qty + 1)}>
-                                                <Plus className="h-4 w-4" />
-                                            </Button>
-                                            {selected && (
-                                                <span className="ml-auto text-sm font-semibold">{formatCurrency(product.price * qty)}</span>
-                                            )}
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </div>
-                ))}
+                <div className="grid gap-2 sm:grid-cols-3">
+                    {groups.map((group) => {
+                        const active = group.typeId === activeMenuId;
+                        return (
+                            <button
+                                key={group.typeId}
+                                type="button"
+                                onClick={() => chooseMenu(group.typeId)}
+                                className={`rounded-lg border-2 px-4 py-3 text-left transition-colors ${active ? 'border-[#f5991c] bg-orange-50' : 'border-input hover:border-[#f5991c]/50'}`}
+                            >
+                                <span className="block font-semibold">{menuLabel(group.typeName)}</span>
+                                <span className="block text-xs text-muted-foreground">
+                                    {group.perPerson ? 'Priced per person' : 'Priced per item'} · {group.products.length} items
+                                </span>
+                            </button>
+                        );
+                    })}
+                </div>
             </section>
+
+            {/* 2. Build from the active menu */}
+            {activeGroup && (
+                <section className="space-y-3">
+                    <div className="space-y-1">
+                        <h3 className="text-2xl font-bold">{menuLabel(activeGroup.typeName)} menu</h3>
+                        <p className="text-sm text-muted-foreground">
+                            Set a quantity for each item.{activeGroup.perPerson ? ' For per-person items, the quantity is the number of guests it should serve.' : ''}
+                        </p>
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                        {activeGroup.products.map((product) => {
+                            const qty = selections[product.id] || 0;
+                            const selected = qty > 0;
+                            return (
+                                <div
+                                    key={product.id}
+                                    className={`rounded-lg border p-4 transition-colors ${selected ? 'border-[#f5991c] bg-orange-50/50' : 'border-input'}`}
+                                >
+                                    <div className="min-w-0">
+                                        <p className="font-medium">{product.title}</p>
+                                        {product.description && (
+                                            <p className="text-sm text-muted-foreground line-clamp-2">{product.description}</p>
+                                        )}
+                                        <p className="text-sm font-semibold mt-1">
+                                            {formatCurrency(product.price)}
+                                            <span className="font-normal text-muted-foreground">
+                                                {activeGroup.perPerson ? ' / person' : ' each'}
+                                            </span>
+                                        </p>
+                                        {activeGroup.perPerson && (
+                                            <p className="text-xs text-muted-foreground">Quantity = number of guests served</p>
+                                        )}
+                                    </div>
+
+                                    <div className="mt-3 flex items-center gap-3">
+                                        <Button type="button" variant="outline" size="icon" className="h-8 w-8" onClick={() => setQty(product.id, qty - 1)} disabled={qty === 0}>
+                                            <Minus className="h-4 w-4" />
+                                        </Button>
+                                        <span className="w-10 text-center font-medium">{qty}</span>
+                                        <Button type="button" variant="outline" size="icon" className="h-8 w-8" onClick={() => setQty(product.id, qty + 1)}>
+                                            <Plus className="h-4 w-4" />
+                                        </Button>
+                                        {selected && (
+                                            <span className="ml-auto text-sm font-semibold">{formatCurrency(product.price * qty)}</span>
+                                        )}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </section>
+            )}
 
             {/* Running quote summary */}
             <section className="rounded-lg border bg-muted/40 p-5 space-y-3">
@@ -183,6 +241,7 @@ export default function CateringQuoteBuilder() {
                     <p className="text-sm text-muted-foreground">Set a quantity on the items above to build your estimate.</p>
                 ) : (
                     <>
+                        <p className="text-xs uppercase tracking-wide text-muted-foreground">{activeGroup ? menuLabel(activeGroup.typeName) : ''} menu</p>
                         <ul className="space-y-1.5 text-sm">
                             {lineItems.map((item) => (
                                 <li key={item.productId} className="flex justify-between gap-3">
@@ -278,6 +337,23 @@ export default function CateringQuoteBuilder() {
                     <>Request a Quote{estimate > 0 ? ` · est. ${formatCurrency(estimate)}` : ''}</>
                 )}
             </Button>
+
+            <AlertDialog open={pendingMenuId != null} onOpenChange={(open) => { if (!open) setPendingMenuId(null); }}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Switch menus?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Catering orders are from a single menu. Switching to{' '}
+                            <strong>{groups.find((g) => g.typeId === pendingMenuId) ? menuLabel(groups.find((g) => g.typeId === pendingMenuId)!.typeName) : ''}</strong>{' '}
+                            will clear the items you&apos;ve picked.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel onClick={() => setPendingMenuId(null)}>Keep current menu</AlertDialogCancel>
+                        <AlertDialogAction onClick={confirmSwitch}>Switch &amp; clear</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </form>
     );
 }
