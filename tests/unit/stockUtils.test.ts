@@ -23,6 +23,31 @@ describe('isUnlimitedStock', () => {
     })
 })
 
+describe('stock_by_type pooling (shared per-type pool)', () => {
+    // Round Pizza (typeId 6) with a shared pool; variants 6 (cheese) & 7 (pepperoni)
+    const cheese = makeProduct({ id: 6, typeId: 6, quantity: 3, stock_by_type: true })
+
+    it('remaining draws from the whole type, not just the product', () => {
+        const items = [makeCartItem({ productId: 7, typeId: 6, quantity: 2 })] // 2 pepperoni
+        expect(remainingUnitsForProduct(cheese, items)).toBe(1) // pool 3 - 2 = 1
+    })
+
+    it('per-product (non-pooled) only counts its own product', () => {
+        const items = [makeCartItem({ productId: 7, typeId: 6, quantity: 2 })]
+        const perProduct = makeProduct({ id: 6, typeId: 6, quantity: 3 }) // stock_by_type falsy
+        expect(remainingUnitsForProduct(perProduct, items)).toBe(3)
+    })
+
+    it('blocks adding past the shared pool across variants', () => {
+        const items = [makeCartItem({ productId: 7, typeId: 6, quantity: 2 })]
+        const addTwoCheese = makeCartItem({ productId: 6, typeId: 6, quantity: 2, product: cheese })
+        expect(canAddQuantityForProduct(items, addTwoCheese)).toBe(false) // 2 + 2 > 3
+        expect(remainingBeforeAdd(items, addTwoCheese)).toBe(1)
+        const addOne = makeCartItem({ productId: 6, typeId: 6, quantity: 1, product: cheese })
+        expect(canAddQuantityForProduct(items, addOne)).toBe(true) // 2 + 1 = 3 ok
+    })
+})
+
 describe('totalQuantityInCartForProduct', () => {
     it('sums quantities across all lines of the same product', () => {
         const items = [

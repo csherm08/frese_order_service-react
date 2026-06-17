@@ -30,6 +30,9 @@ export interface Product {
     photoUrl: string;
     typeId: number;
     quantity: number;
+    // When true, `quantity` is a shared pool for the whole type (e.g. pizza/wings);
+    // all variants of the type draw from it. Set by the backend (applyTypeStock).
+    stock_by_type?: boolean;
     active: boolean;
     product_sizes?: ProductSize[];
     // product_selection_values is an object like: { "Bread Type": { "Small": [...], "Medium": [...] } }
