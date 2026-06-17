@@ -159,11 +159,7 @@ export default function SpecialsPage() {
                                                     In Cart
                                                 </Badge>
                                             )}
-                                            {upcoming ? (
-                                                <Badge className="bg-blue-500 hover:bg-blue-600">
-                                                    Coming Soon
-                                                </Badge>
-                                            ) : active ? (
+                                            {active ? (
                                                 <Badge className="bg-orange-500 hover:bg-orange-600">
                                                     <Sparkles className="h-3 w-3 mr-1" />
                                                     Active Now

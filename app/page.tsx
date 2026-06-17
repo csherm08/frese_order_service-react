@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Phone, MapPin, Clock, Quote, Loader2 } from "lucide-react"
 import NewsCarousel from "@/components/NewsCarousel"
+import StoreHours from "@/components/StoreHours"
 import { fetchProducts, fetchProductTypes } from "@/lib/api"
 import { filterProductsForOrderSite } from "@/lib/catalogFilter"
 import { getOrderSiteMode } from "@/lib/siteConfig"
@@ -77,8 +78,10 @@ export default function HomePage() {
               <span className="block text-[#f5991c]">Since 1920</span>
             </h1>
             <p className="text-lg md:text-xl text-white/90 max-w-2xl drop-shadow-[0_1px_10px_rgba(0,0,0,0.8)]">
-              Four generations of baking tradition. From our ovens to your table — fresh bread, legendary fried chicken,
-              and homemade pastries made with recipes passed down since 1920.
+              From our original oven to your family’s table, Frese’s Bakery &amp; Catering has been a cherished part of
+              the community for four generations. From fresh Italian bread and homemade pastries to our legendary tomato
+              pie and pizzas, we are proud to continue the tradition of quality, craftsmanship, and service that has
+              defined our family business.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 pt-4">
               <Button asChild size="lg" className="text-lg bg-[#f5991c] hover:bg-[#d9850f] text-white shadow-lg shadow-black/30">
@@ -214,11 +217,7 @@ export default function HomePage() {
                   <Clock className="h-6 w-6" />
                 </div>
                 <h3 className="font-semibold text-lg">Hours</h3>
-                <div className="text-gray-300 space-y-1">
-                  <p>Tue – Fri: 7am – 5pm</p>
-                  <p>Saturday: 7am – 3pm</p>
-                  <p>Sun – Mon: Closed</p>
-                </div>
+                <StoreHours />
               </div>
 
               {/* Phone */}

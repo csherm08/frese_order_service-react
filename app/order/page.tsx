@@ -120,10 +120,12 @@ export default function OrderPage() {
                                                 <span className="font-semibold text-lg truncate">{special.name}</span>
                                                 {(() => {
                                                     // Backend leaves `active` null; derive status from the date window.
+                                                    // No "coming soon" label — only flag specials that are available now.
                                                     const upcoming = new Date(special.start) > now;
+                                                    if (upcoming) return null;
                                                     return (
-                                                        <Badge variant={upcoming ? 'secondary' : 'default'} className="text-xs">
-                                                            {upcoming ? 'Coming soon' : 'Available now'}
+                                                        <Badge variant="default" className="text-xs">
+                                                            Available now
                                                         </Badge>
                                                     );
                                                 })()}
@@ -165,7 +167,7 @@ export default function OrderPage() {
                                 Regular Menu
                             </CardTitle>
                             <CardDescription className="text-base">
-                                Our full selection of baked goods
+                                Our full selection of items
                             </CardDescription>
                         </CardHeader>
 
@@ -180,7 +182,6 @@ export default function OrderPage() {
                                     <Badge variant="outline">Bread</Badge>
                                     <Badge variant="outline">Pizza</Badge>
                                     <Badge variant="outline">Wings</Badge>
-                                    <Badge variant="outline">Pastries</Badge>
                                     <Badge variant="outline">& More</Badge>
                                 </div>
                             </div>
