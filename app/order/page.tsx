@@ -120,10 +120,12 @@ export default function OrderPage() {
                                                 <span className="font-semibold text-lg truncate">{special.name}</span>
                                                 {(() => {
                                                     // Backend leaves `active` null; derive status from the date window.
+                                                    // No "coming soon" label — only flag specials that are available now.
                                                     const upcoming = new Date(special.start) > now;
+                                                    if (upcoming) return null;
                                                     return (
-                                                        <Badge variant={upcoming ? 'secondary' : 'default'} className="text-xs">
-                                                            {upcoming ? 'Coming soon' : 'Available now'}
+                                                        <Badge variant="default" className="text-xs">
+                                                            Available now
                                                         </Badge>
                                                     );
                                                 })()}
