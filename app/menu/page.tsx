@@ -108,6 +108,86 @@ export default function MenuPage() {
         ? products
         : products.filter(p => p.typeId === parseInt(filter));
 
+    // "All Items" keeps products grouped by type (each its own section);
+    // a specific category shows a single flat grid.
+    const productGroups = Array.from(new Set(products.map(p => p.typeId)))
+        .map(typeId => ({
+            typeId,
+            name: productTypes.find(t => t.id === typeId)?.name || `Category ${typeId}`,
+            items: products.filter(p => p.typeId === typeId),
+        }))
+        .filter(g => g.items.length > 0);
+
+    const renderProductCard = (product: Product) => (
+        <Card key={product.id} className="flex flex-col hover:shadow-lg transition-all duration-300 group overflow-hidden">
+            <CardHeader className="p-0 space-y-0 shrink-0">
+                <div className="relative w-full aspect-square overflow-hidden rounded-t-xl bg-muted">
+                    {product.photoUrl ? (
+                        <CachedImage
+                            src={product.photoUrl}
+                            alt={product.title}
+                            fill
+                            containerClassName="absolute inset-0 size-full"
+                            className="rounded-t-xl group-hover:scale-105 transition-transform duration-300"
+                        />
+                    ) : (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                            <span className="text-muted-foreground text-sm">No image</span>
+                        </div>
+                    )}
+                </div>
+            </CardHeader>
+
+            <CardContent className="flex-1 pt-4 space-y-2">
+                <div className="flex items-start justify-between gap-2">
+                    <CardTitle className="text-lg">{product.title}</CardTitle>
+                    {product.special_price && (
+                        <Badge variant="destructive">Sale</Badge>
+                    )}
+                </div>
+
+                {product.description && (
+                    <p className="text-sm text-muted-foreground line-clamp-2">
+                        {product.description}
+                    </p>
+                )}
+
+                <div className="flex items-center gap-2">
+                    {product.special_price ? (
+                        <>
+                            <span className="text-lg font-bold text-destructive">
+                                {formatCurrency(product.special_price)}
+                            </span>
+                            <span className="text-sm text-muted-foreground line-through">
+                                {formatCurrency(product.price)}
+                            </span>
+                        </>
+                    ) : (product.product_sizes && product.product_sizes.length > 0 && !product.price) ? (
+                        // Sized item with no base price — the price comes from the chosen size.
+                        <span className="text-lg font-semibold text-muted-foreground">Pick a size</span>
+                    ) : (
+                        <span className="text-lg font-bold">
+                            {formatCurrency(product.price)}
+                        </span>
+                    )}
+                </div>
+
+                <ProductStockHint product={product} items={items} />
+            </CardContent>
+
+            <CardFooter className="pt-0">
+                <Button
+                    className="w-full"
+                    onClick={() => handleAddToCart(product)}
+                    disabled={!canAddProductFromMenu(product)}
+                >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add to Cart
+                </Button>
+            </CardFooter>
+        </Card>
+    );
+
     if (loading) {
         return (
             <div className="flex items-center justify-center min-h-[60vh]">
@@ -195,75 +275,23 @@ export default function MenuPage() {
                     })}
                 </div>
 
-                {/* Products Grid */}
-                <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                    {filteredProducts.map((product) => (
-                        <Card key={product.id} className="flex flex-col hover:shadow-lg transition-all duration-300 group overflow-hidden">
-                            <CardHeader className="p-0 space-y-0 shrink-0">
-                                <div className="relative w-full aspect-square overflow-hidden rounded-t-xl bg-muted">
-                                    {product.photoUrl ? (
-                                        <CachedImage
-                                            src={product.photoUrl}
-                                            alt={product.title}
-                                            fill
-                                            containerClassName="absolute inset-0 size-full"
-                                            className="rounded-t-xl group-hover:scale-105 transition-transform duration-300"
-                                        />
-                                    ) : (
-                                        <div className="absolute inset-0 flex items-center justify-center">
-                                            <span className="text-muted-foreground text-sm">No image</span>
-                                        </div>
-                                    )}
+                {/* Products — grouped by type for "All Items", flat for a single category */}
+                {filter === 'all' ? (
+                    <div className="space-y-10">
+                        {productGroups.map((group) => (
+                            <section key={group.typeId} className="space-y-4">
+                                <h2 className="text-2xl font-bold">{group.name}</h2>
+                                <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                                    {group.items.map(renderProductCard)}
                                 </div>
-                            </CardHeader>
-
-                            <CardContent className="flex-1 pt-4 space-y-2">
-                                <div className="flex items-start justify-between gap-2">
-                                    <CardTitle className="text-lg">{product.title}</CardTitle>
-                                    {product.special_price && (
-                                        <Badge variant="destructive">Sale</Badge>
-                                    )}
-                                </div>
-
-                                {product.description && (
-                                    <p className="text-sm text-muted-foreground line-clamp-2">
-                                        {product.description}
-                                    </p>
-                                )}
-
-                                <div className="flex items-center gap-2">
-                                    {product.special_price ? (
-                                        <>
-                                            <span className="text-lg font-bold text-destructive">
-                                                {formatCurrency(product.special_price)}
-                                            </span>
-                                            <span className="text-sm text-muted-foreground line-through">
-                                                {formatCurrency(product.price)}
-                                            </span>
-                                        </>
-                                    ) : (
-                                        <span className="text-lg font-bold">
-                                            {formatCurrency(product.price)}
-                                        </span>
-                                    )}
-                                </div>
-
-                                <ProductStockHint product={product} items={items} />
-                            </CardContent>
-
-                            <CardFooter className="pt-0">
-                                <Button
-                                    className="w-full"
-                                    onClick={() => handleAddToCart(product)}
-                                    disabled={!canAddProductFromMenu(product)}
-                                >
-                                    <Plus className="h-4 w-4 mr-2" />
-                                    Add to Cart
-                                </Button>
-                            </CardFooter>
-                        </Card>
-                    ))}
-                </div>
+                            </section>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                        {filteredProducts.map(renderProductCard)}
+                    </div>
+                )}
 
                 {filteredProducts.length === 0 && (
                     <div className="text-center py-12">

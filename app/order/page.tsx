@@ -167,7 +167,7 @@ export default function OrderPage() {
                                 Regular Menu
                             </CardTitle>
                             <CardDescription className="text-base">
-                                Our full selection of baked goods
+                                Our full selection of items
                             </CardDescription>
                         </CardHeader>
 
@@ -182,7 +182,6 @@ export default function OrderPage() {
                                     <Badge variant="outline">Bread</Badge>
                                     <Badge variant="outline">Pizza</Badge>
                                     <Badge variant="outline">Wings</Badge>
-                                    <Badge variant="outline">Pastries</Badge>
                                     <Badge variant="outline">& More</Badge>
                                 </div>
                             </div>
