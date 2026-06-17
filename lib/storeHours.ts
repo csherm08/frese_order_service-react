@@ -42,6 +42,30 @@ export function computeWeekdayWindows(timeKeys: string[]): Record<number, DayWin
     return out;
 }
 
+export interface DayHours extends DayWindow {
+    specialsOnly: boolean; // day only has special-event slots (no regular ordering)
+}
+
+/**
+ * Combine regular and special timeslot keys into per-weekday hours, flagging
+ * days that exist only because of a special (e.g. the Thursday Dinner Special)
+ * so the UI can mark them "specials only".
+ */
+export function computeStoreHours(regularKeys: string[], specialKeys: string[]): Record<number, DayHours> {
+    const reg = computeWeekdayWindows(regularKeys);
+    const spc = computeWeekdayWindows(specialKeys);
+    const out: Record<number, DayHours> = {};
+    const days = new Set([...Object.keys(reg), ...Object.keys(spc)].map(Number));
+    for (const d of days) {
+        const r = reg[d];
+        const s = spc[d];
+        if (r && s) out[d] = { open: Math.min(r.open, s.open), close: Math.max(r.close, s.close), specialsOnly: false };
+        else if (r) out[d] = { ...r, specialsOnly: false };
+        else out[d] = { ...s, specialsOnly: true };
+    }
+    return out;
+}
+
 export function formatMinutes(m: number): string {
     const h = Math.floor(m / 60);
     const mi = m % 60;

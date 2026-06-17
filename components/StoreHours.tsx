@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { getRegularTimeslots, fetchSpecials, getSpecialTimeslots } from '@/lib/api';
-import { computeWeekdayWindows, formatMinutes, WEEKDAY_NAMES, type DayWindow } from '@/lib/storeHours';
+import { computeStoreHours, formatMinutes, WEEKDAY_NAMES, type DayHours } from '@/lib/storeHours';
 
 // Mon→Sun display order.
 const ORDER = [1, 2, 3, 4, 5, 6, 0];
@@ -14,24 +14,25 @@ const ORDER = [1, 2, 3, 4, 5, 6, 0];
  * interval (see lib/storeHours). Falls back gracefully if the API is down.
  */
 export default function StoreHours() {
-    const [windows, setWindows] = useState<Record<number, DayWindow> | null>(null);
+    const [windows, setWindows] = useState<Record<number, DayHours> | null>(null);
 
     useEffect(() => {
         let cancelled = false;
         (async () => {
-            const keys: string[] = [];
+            const regularKeys: string[] = [];
+            const specialKeys: string[] = [];
             try {
                 const regular = await getRegularTimeslots(14).catch(() => ({}));
-                keys.push(...Object.keys(regular || {}));
+                regularKeys.push(...Object.keys(regular || {}));
                 const specials = await fetchSpecials().catch(() => []);
                 const slotMaps = await Promise.all(
                     (specials || []).map((s: { id: number }) => getSpecialTimeslots(s.id).catch(() => ({}))),
                 );
-                for (const m of slotMaps) keys.push(...Object.keys(m || {}));
+                for (const m of slotMaps) specialKeys.push(...Object.keys(m || {}));
             } catch {
                 // fall through with whatever keys we gathered
             }
-            if (!cancelled) setWindows(computeWeekdayWindows(keys));
+            if (!cancelled) setWindows(computeStoreHours(regularKeys, specialKeys));
         })();
         return () => { cancelled = true; };
     }, []);
@@ -56,6 +57,9 @@ export default function StoreHours() {
                 windows[d] ? (
                     <p key={d}>
                         {WEEKDAY_NAMES[d]}: {formatMinutes(windows[d].open)} – {formatMinutes(windows[d].close)}
+                        {windows[d].specialsOnly && (
+                            <span className="text-sm text-[#f5991c]"> (specials only)</span>
+                        )}
                     </p>
                 ) : null,
             )}

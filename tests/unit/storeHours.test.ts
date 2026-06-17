@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { computeWeekdayWindows, formatMinutes, WEEKDAY_NAMES } from '@/lib/storeHours'
+import { computeWeekdayWindows, computeStoreHours, formatMinutes, WEEKDAY_NAMES } from '@/lib/storeHours'
 
 // JS Date.toString()-style keys, as the timeslot APIs return them.
 const k = (wd: string, time: string) => `${wd} Jun 19 2026 ${time} GMT-0400 (Eastern Daylight Time)`
@@ -25,6 +25,23 @@ describe('computeWeekdayWindows', () => {
 
     it('ignores unparseable keys', () => {
         expect(computeWeekdayWindows(['', 'garbage', 'foo bar'])).toEqual({})
+    })
+})
+
+describe('computeStoreHours', () => {
+    const regular = [k('Fri', '16:00:00'), k('Fri', '19:45:00'), k('Sat', '14:00:00'), k('Sat', '19:45:00')]
+    const special = [k('Thu', '16:00:00'), k('Thu', '18:45:00')]
+
+    it('flags special-only days and keeps regular days unflagged', () => {
+        const h = computeStoreHours(regular, special)
+        expect(h[4]).toEqual({ open: 16 * 60, close: 19 * 60, specialsOnly: true })   // Thu
+        expect(h[5]).toEqual({ open: 16 * 60, close: 20 * 60, specialsOnly: false })  // Fri
+        expect(h[6]).toEqual({ open: 14 * 60, close: 20 * 60, specialsOnly: false })  // Sat
+    })
+
+    it('a day with both regular + special slots is not specials-only (windows merge)', () => {
+        const h = computeStoreHours([k('Fri', '16:00:00')], [k('Fri', '11:00:00')])
+        expect(h[5]).toEqual({ open: 11 * 60, close: 16 * 60 + 15, specialsOnly: false })
     })
 })
 
