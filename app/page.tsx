@@ -5,10 +5,10 @@ import Link from "next/link"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { Phone, MapPin, Clock, Quote, Loader2 } from "lucide-react"
+import { Phone, MapPin, Clock, Quote, Loader2, Star } from "lucide-react"
 import NewsCarousel from "@/components/NewsCarousel"
 import StoreHours from "@/components/StoreHours"
-import { fetchProducts, fetchProductTypes } from "@/lib/api"
+import { fetchProducts, fetchProductTypes, fetchPublicGoogleReviews, type PublicGoogleReviews } from "@/lib/api"
 import { filterProductsForOrderSite } from "@/lib/catalogFilter"
 import { getOrderSiteMode } from "@/lib/siteConfig"
 import { Product } from "@/types/products"
@@ -16,6 +16,12 @@ import { Product } from "@/types/products"
 export default function HomePage() {
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
+  const [googleReviews, setGoogleReviews] = useState<PublicGoogleReviews | null>(null)
+
+  useEffect(() => {
+    // Fail-soft: if this errors we just keep the built-in quotes below.
+    fetchPublicGoogleReviews().then(setGoogleReviews).catch(() => {})
+  }, [])
 
   useEffect(() => {
     async function loadProducts() {
@@ -157,28 +163,73 @@ export default function HomePage() {
           <div className="max-w-4xl mx-auto">
             <div className="text-center mb-10">
               <h2 className="text-3xl font-bold">What Our Customers Say</h2>
+              {googleReviews?.rating != null && (
+                <div className="flex items-center justify-center gap-2 mt-3 text-muted-foreground">
+                  <span className="font-semibold text-foreground">{googleReviews.rating}</span>
+                  <span className="inline-flex" aria-label={`${googleReviews.rating} out of 5 stars`}>
+                    {[1, 2, 3, 4, 5].map((i) => (
+                      <Star
+                        key={i}
+                        className="h-4 w-4"
+                        style={{ color: "#f5991c", fill: i <= Math.round(googleReviews.rating || 0) ? "#f5991c" : "none" }}
+                      />
+                    ))}
+                  </span>
+                  <span>from {googleReviews.reviewCount} Google reviews</span>
+                </div>
+              )}
             </div>
             <div className="grid md:grid-cols-2 gap-6">
-              <Card className="bg-gray-50 border-gray-200">
-                <CardContent className="p-6">
-                  <Quote className="h-8 w-8 text-[#f5991c] mb-4" />
-                  <p className="text-muted-foreground mb-4">
-                    "Best fried chicken in the Capital Region, hands down. My family has been coming here for three
-                    generations!"
-                  </p>
-                  <p className="font-semibold">— Maria S., Ravena</p>
-                </CardContent>
-              </Card>
-              <Card className="bg-gray-50 border-gray-200">
-                <CardContent className="p-6">
-                  <Quote className="h-8 w-8 text-[#f5991c] mb-4" />
-                  <p className="text-muted-foreground mb-4">
-                    "Their bread is incredible — you can smell it baking from the parking lot. Nothing else compares."
-                  </p>
-                  <p className="font-semibold">— John D., Coeymans</p>
-                </CardContent>
-              </Card>
+              {(() => {
+                const real = (googleReviews?.reviews || []).filter((r) => r.rating >= 4 && r.text.trim()).slice(0, 2)
+                if (real.length > 0) {
+                  return real.map((r, i) => (
+                    <Card key={i} className="bg-gray-50 border-gray-200">
+                      <CardContent className="p-6">
+                        <Quote className="h-8 w-8 text-[#f5991c] mb-4" />
+                        <p className="text-muted-foreground mb-4 line-clamp-5">{r.text}</p>
+                        <p className="font-semibold">
+                          — {r.author || "A Google reviewer"}
+                          {r.when && <span className="font-normal text-sm text-muted-foreground"> · {r.when} on Google</span>}
+                        </p>
+                      </CardContent>
+                    </Card>
+                  ))
+                }
+                return (
+                  <>
+                    <Card className="bg-gray-50 border-gray-200">
+                      <CardContent className="p-6">
+                        <Quote className="h-8 w-8 text-[#f5991c] mb-4" />
+                        <p className="text-muted-foreground mb-4">
+                          "Best fried chicken in the Capital Region, hands down. My family has been coming here for three
+                          generations!"
+                        </p>
+                        <p className="font-semibold">— Maria S., Ravena</p>
+                      </CardContent>
+                    </Card>
+                    <Card className="bg-gray-50 border-gray-200">
+                      <CardContent className="p-6">
+                        <Quote className="h-8 w-8 text-[#f5991c] mb-4" />
+                        <p className="text-muted-foreground mb-4">
+                          "Their bread is incredible — you can smell it baking from the parking lot. Nothing else compares."
+                        </p>
+                        <p className="font-semibold">— John D., Coeymans</p>
+                      </CardContent>
+                    </Card>
+                  </>
+                )
+              })()}
             </div>
+            {googleReviews?.mapsUrl && (
+              <div className="text-center mt-8">
+                <Button asChild variant="link" className="text-[#f5991c] hover:text-[#d9850f]">
+                  <a href={googleReviews.mapsUrl} target="_blank" rel="noopener noreferrer">
+                    Read all {googleReviews.reviewCount} reviews on Google
+                  </a>
+                </Button>
+              </div>
+            )}
           </div>
         </div>
       </section>
