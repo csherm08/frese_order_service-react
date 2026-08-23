@@ -138,6 +138,28 @@ export async function submitCateringRequest(data: CateringRequestInput) {
     return response.json();
 }
 
+export async function fetchReviewRequest(token: string) {
+    const response = await fetch(`${API_URL}/review/${token}`);
+    if (!response.ok) {
+        if (response.status === 404) throw new Error('This feedback link is invalid or has expired.');
+        throw new Error('Failed to load');
+    }
+    return response.json();
+}
+
+export async function submitReviewFeedback(token: string, comment: string) {
+    const response = await fetch(`${API_URL}/review/${token}/feedback`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ comment }),
+    });
+    if (!response.ok) {
+        const error = await response.json().catch(() => ({ error: 'Failed to send feedback' }));
+        throw new Error(error.error || 'Failed to send feedback');
+    }
+    return response.json();
+}
+
 export async function fetchCateringDeposit(token: string) {
     const response = await fetch(`${API_URL}/catering/deposit/${token}`);
     if (!response.ok) {
