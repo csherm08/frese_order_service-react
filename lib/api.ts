@@ -138,6 +138,27 @@ export async function submitCateringRequest(data: CateringRequestInput) {
     return response.json();
 }
 
+export interface PublicGoogleReview {
+    author?: string;
+    rating: number;
+    when?: string;
+    text: string;
+}
+
+export interface PublicGoogleReviews {
+    rating: number | null;
+    reviewCount: number;
+    mapsUrl?: string | null;
+    writeReviewUrl: string;
+    reviews: PublicGoogleReview[];
+}
+
+export async function fetchPublicGoogleReviews(): Promise<PublicGoogleReviews> {
+    const response = await fetch(`${API_URL}/public/google-reviews`);
+    if (!response.ok) throw new Error('Failed to load reviews');
+    return response.json();
+}
+
 export async function fetchReviewRequest(token: string) {
     const response = await fetch(`${API_URL}/review/${token}`);
     if (!response.ok) {
