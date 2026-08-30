@@ -12,6 +12,7 @@ import { ShoppingBag, ArrowLeft, CheckCircle, Loader2 } from "lucide-react"
 import Link from "next/link"
 import { formatCurrency, formatDateTime } from '@/lib/utils'
 import { createPaymentIntent, processOrderAndPay } from '@/lib/api'
+import { loadSavedContact, saveContact, clearSavedContact } from '@/lib/savedContact'
 import { getOrderSiteMode } from '@/lib/siteConfig'
 import { loadStripe } from '@stripe/stripe-js'
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js'
@@ -165,6 +166,25 @@ export default function CheckoutPage() {
     const [customerEmail, setCustomerEmail] = useState('')
     const [customerPhone, setCustomerPhone] = useState('')
     const [orderNotes, setOrderNotes] = useState('')
+    // True when the contact fields were prefilled from a previous order on this device.
+    const [prefilledContact, setPrefilledContact] = useState(false)
+
+    useEffect(() => {
+        const saved = loadSavedContact()
+        if (!saved) return
+        setCustomerName(saved.name)
+        setCustomerEmail(saved.email)
+        setCustomerPhone(saved.phone)
+        setPrefilledContact(true)
+    }, [])
+
+    const forgetSavedContact = () => {
+        clearSavedContact()
+        setCustomerName('')
+        setCustomerEmail('')
+        setCustomerPhone('')
+        setPrefilledContact(false)
+    }
     const [orderConfirmation, setOrderConfirmation] = useState<any>(null)
 
     // After a successful order we clear the cart; confirm step must still render with empty items.
@@ -217,6 +237,8 @@ export default function CheckoutPage() {
     }
 
     const handlePaymentSuccess = () => {
+        // Remember who ordered so the next checkout on this device is prefilled.
+        saveContact({ name: customerName.trim(), email: customerEmail.trim(), phone: customerPhone.trim() })
         setOrderConfirmation({
             customerName,
             customerEmail,
@@ -389,6 +411,14 @@ export default function CheckoutPage() {
                             </CardHeader>
                             <CardContent className="space-y-6">
                                 <form className="space-y-4">
+                                    {prefilledContact && (
+                                        <p className="text-sm text-gray-600 rounded-md bg-gray-50 border border-gray-200 px-3 py-2">
+                                            Welcome back{customerName ? `, ${customerName.split(/\s+/)[0]}` : ""}! We filled in your details from last time.{" "}
+                                            <button type="button" onClick={forgetSavedContact} className="text-[#f5991c] font-medium underline-offset-2 hover:underline">
+                                                Not you? Clear
+                                            </button>
+                                        </p>
+                                    )}
                                     <div className="space-y-2">
                                         <Label htmlFor="name">Full Name *</Label>
                                         <Input
