@@ -77,7 +77,7 @@ export default function HomePage() {
         <div className="container mx-auto px-4 relative z-10">
           <div className="flex flex-col items-center text-center space-y-6 max-w-3xl mx-auto">
             <span className="inline-flex items-center rounded-full border border-white/25 bg-white/10 px-4 py-1.5 text-xs sm:text-sm font-medium uppercase tracking-[0.2em] text-white/90 backdrop-blur-sm">
-              Italian Bakery · Ravena, NY
+              Italian Bakery &amp; Pizzeria · Ravena, NY
             </span>
             <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-white drop-shadow-[0_2px_16px_rgba(0,0,0,0.65)]">
               Fresh Baked Goods

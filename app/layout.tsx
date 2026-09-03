@@ -29,9 +29,63 @@ console.log(`🔗 Backend URL: ${apiUrl}`);
 console.log(`💳 Stripe Environment: ${stripeEnv} (Key: ${stripeKey.substring(0, 12)}...)`);
 console.log("===================================================");
 
-export const metadata: Metadata = {
-  title: "Frese's Bakery - Fresh Baked Goods Daily",
-  description: "Order fresh baked goods, fried chicken, and more from Frese's Bakery in Ravena, NY",
+// Site-aware SEO. The two Netlify sites build separately, so build-time env
+// decides which variant is baked in. The Plug Power storefront is an internal
+// café site — it should not compete with (or dilute) the bakery's search
+// presence, so it gets noindex.
+const isMainSite = (process.env.NEXT_PUBLIC_ORDER_SITE || "main").toLowerCase().trim() !== "plugpower";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://fresesbakery.com";
+
+export const metadata: Metadata = isMainSite
+  ? {
+      metadataBase: new URL(SITE_URL),
+      title: "Frese's Bakery | Pizza, Wings & Italian Bakery in Ravena, NY",
+      description:
+        "Family-owned since 1920. Order pizza, wings, subs, fresh Italian bread and baked goods for pickup in Ravena, NY — serving Coeymans, Selkirk and the Capital Region. Catering available.",
+      keywords: [
+        "pizza Ravena NY", "pizza near Ravena", "bakery Ravena NY", "wings Ravena",
+        "Italian bakery Albany County", "catering Ravena NY", "Frese's Bakery",
+      ],
+      openGraph: {
+        title: "Frese's Bakery | Pizza, Wings & Italian Bakery in Ravena, NY",
+        description:
+          "Family-owned since 1920. Pizza, wings, subs, fresh Italian bread and baked goods for pickup in Ravena, NY.",
+        url: SITE_URL,
+        siteName: "Frese's Bakery",
+        images: [{ url: "/frese_front_bakery.jpg", width: 1200, height: 800, alt: "Frese's Bakery storefront in Ravena, NY" }],
+        locale: "en_US",
+        type: "website",
+      },
+      alternates: { canonical: "/" },
+    }
+  : {
+      title: process.env.NEXT_PUBLIC_SITE_TITLE?.trim() || "Frese's Bakery",
+      description: "Order fresh food for pickup.",
+      robots: { index: false, follow: false },
+    };
+
+// LocalBusiness structured data — how Google connects the site to "pizza in
+// Ravena NY" searches. Address/phone must match the Google Business Profile.
+const LOCAL_BUSINESS_JSONLD = {
+  "@context": "https://schema.org",
+  "@type": ["Bakery", "Restaurant"],
+  name: "Frese's Bakery",
+  alternateName: "Frese's Bakery & Catering",
+  servesCuisine: ["Pizza", "Italian", "American"],
+  url: SITE_URL,
+  telephone: "+15187561000",
+  priceRange: "$",
+  image: `${SITE_URL}/frese_front_bakery.jpg`,
+  address: {
+    "@type": "PostalAddress",
+    streetAddress: "11 Clifford St",
+    addressLocality: "Ravena",
+    addressRegion: "NY",
+    postalCode: "12143",
+    addressCountry: "US",
+  },
+  hasMenu: `${SITE_URL}/order`,
+  sameAs: ["https://www.google.com/maps/place/?q=place_id:ChIJ19YIYHro3YkR5f6TqhwyNSs"],
 };
 
 export default function RootLayout({
@@ -44,6 +98,13 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        {isMainSite && (
+          <script
+            type="application/ld+json"
+            // Static, build-time JSON of our own literal above — no user input.
+            dangerouslySetInnerHTML={{ __html: JSON.stringify(LOCAL_BUSINESS_JSONLD) }}
+          />
+        )}
         <StartupLogger />
         <LegacyHashRedirect />
         <CartProvider>
