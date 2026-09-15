@@ -156,20 +156,20 @@ test.describe('Quantities (mocked API)', () => {
         });
         await stepPause(page);
 
-        await test.step('Open menu — card shows how many can still be added', async () => {
+        await test.step('Open menu — remaining count is NOT shown to customers', async () => {
             await page.goto('/menu');
             await stepPause(page);
             const card = productCard(page, E2E_PRODUCT_LOW_STOCK.title);
-            await expect(card.getByTestId('product-stock-hint')).toHaveText('2 Left');
+            await expect(card.getByTestId('product-stock-hint')).toHaveCount(0);
         });
 
-        await test.step('Add twice — hint updates to “all in cart” and Add is disabled', async () => {
+        await test.step('Add twice — no count shown until SOLD OUT; Add disables at limit', async () => {
             const card = productCard(page, E2E_PRODUCT_LOW_STOCK.title);
             const btn = card.locator('button:has-text("Add to Cart")');
             await expect(btn).toBeEnabled();
             await btn.click();
             await stepPause(page);
-            await expect(card.getByTestId('product-stock-hint')).toHaveText('1 Left');
+            await expect(card.getByTestId('product-stock-hint')).toHaveCount(0);
             await expect(btn).toBeEnabled();
             await btn.click();
             await stepPause(page);
@@ -216,14 +216,14 @@ test.describe('Quantities (mocked API)', () => {
         });
         await stepPause(page);
 
-        await test.step('Open configurable product — stock hint visible in modal', async () => {
+        await test.step('Open configurable product — no remaining count in modal either', async () => {
             await page.goto('/menu');
             await stepPause(page);
             await addToCartOnCard(page, E2E_PRODUCT_MODAL_STOCK.title).click();
             await stepPause(page);
             const dialog = page.getByRole('dialog');
             await expect(dialog).toBeVisible();
-            await expect(dialog.getByTestId('product-stock-hint')).toHaveText('2 Left');
+            await expect(dialog.getByTestId('product-stock-hint')).toHaveCount(0);
         });
 
         await test.step('Set quantity to 3 (> stock 2) and add — toast blocks over-order', async () => {

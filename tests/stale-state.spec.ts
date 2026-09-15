@@ -103,9 +103,10 @@ test.describe('Stale state (mocked API)', () => {
 
         await page.goto('/menu');
         const card = productCard(page, E2E_PRODUCT_LOW_STOCK.title);
-        await expect(card.getByTestId('product-stock-hint')).toHaveText('5 Left');
+        // Remaining counts are hidden from customers — hint absent while in stock.
+        await expect(card.getByTestId('product-stock-hint')).toHaveCount(0);
         await addToCartOnCard(page, E2E_PRODUCT_LOW_STOCK.title).click();
-        await expect(card.getByTestId('product-stock-hint')).toHaveText('4 Left');
+        await expect(card.getByTestId('product-stock-hint')).toHaveCount(0);
 
         // Server stock collapses to 1 (others bought it) — fewer than the cart already implies.
         await restock(page, [{ ...E2E_PRODUCT_LOW_STOCK, quantity: 1 }]);

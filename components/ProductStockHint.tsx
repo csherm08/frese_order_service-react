@@ -4,7 +4,10 @@ import type { CartItem, Product } from "@/types/products"
 import { isUnlimitedStock, remainingUnitsForProduct } from "@/lib/stockUtils"
 
 /**
- * Shown on catalog cards when inventory is finite so customers (and E2E) see limits before adding.
+ * Shown on catalog cards when a finite-stock product is exhausted. Remaining
+ * counts are deliberately NOT shown to customers (owner's choice 2026-09) —
+ * stock still limits what the cart will accept; the only public signal is
+ * SOLD OUT.
  */
 export function ProductStockHint({ product, items }: { product: Product; items: CartItem[] }) {
     if (isUnlimitedStock(product.quantity)) return null
@@ -12,25 +15,14 @@ export function ProductStockHint({ product, items }: { product: Product; items: 
     const remaining = remainingUnitsForProduct(product, items)
     const cannotAdd = product.quantity <= 0 || remaining <= 0
 
-    if (cannotAdd) {
-        return (
-            <p
-                className="text-base font-bold tracking-wide text-destructive"
-                data-testid="product-stock-hint"
-            >
-                SOLD OUT
-            </p>
-        )
-    }
+    if (!cannotAdd) return null
 
     return (
         <p
-            className="text-base font-bold tabular-nums tracking-tight text-amber-950 dark:text-amber-100"
+            className="text-base font-bold tracking-wide text-destructive"
             data-testid="product-stock-hint"
         >
-            <span className="rounded-md bg-amber-100 px-2 py-1 dark:bg-amber-950/60 dark:ring-1 dark:ring-amber-800/80">
-                {remaining} Left
-            </span>
+            SOLD OUT
         </p>
     )
 }
