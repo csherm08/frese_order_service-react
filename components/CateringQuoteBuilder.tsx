@@ -43,7 +43,10 @@ export default function CateringQuoteBuilder() {
     // Confirm when switching menus would discard current picks.
     const [pendingMenuId, setPendingMenuId] = useState<number | null>(null);
 
-    const [name, setName] = useState('');
+    const [firstName, setFirstName] = useState('');
+    const [lastName, setLastName] = useState('');
+    // Joined — catering_jobs stores a single name; customers still type two fields.
+    const name = [firstName, lastName].map((s) => s.trim()).filter(Boolean).join(' ');
     const [email, setEmail] = useState('');
     const [phone, setPhone] = useState('');
     const [eventDateTime, setEventDateTime] = useState('');
@@ -288,8 +291,16 @@ export default function CateringQuoteBuilder() {
                 <h3 className="text-2xl font-bold">Your details</h3>
                 <div className="grid sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                        <Label htmlFor="quote-name">Name</Label>
-                        <Input id="quote-name" type="text" value={name} onChange={(e) => setName(e.target.value)} required />
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <Label htmlFor="quote-first-name">First Name</Label>
+                                <Input id="quote-first-name" type="text" autoComplete="given-name" value={firstName} onChange={(e) => setFirstName(e.target.value)} required />
+                            </div>
+                            <div>
+                                <Label htmlFor="quote-last-name">Last Name</Label>
+                                <Input id="quote-last-name" type="text" autoComplete="family-name" value={lastName} onChange={(e) => setLastName(e.target.value)} required />
+                            </div>
+                        </div>
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="quote-email">Email</Label>

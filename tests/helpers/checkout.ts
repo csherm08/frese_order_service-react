@@ -470,10 +470,16 @@ export async function selectPickupTimeslot(page: Page) {
  * Fill in customer information
  */
 export async function fillCustomerInfo(page: Page, customer = TEST_CUSTOMER) {
-    // Fill in name
-    const nameInput = page.locator('input[id="name"], input[placeholder*="Name" i]');
-    await expect(nameInput).toBeVisible();
-    await nameInput.fill(customer.name);
+    // Fill in name — split into first/last fields (joined name still drives the order payload)
+    const parts = String(customer.name || '').trim().split(/\s+/);
+    const first = parts.slice(0, -1).join(' ') || parts[0] || '';
+    const last = parts.length > 1 ? parts[parts.length - 1] : '';
+    const firstInput = page.locator('input[id="firstName"]');
+    await expect(firstInput).toBeVisible();
+    await firstInput.fill(first);
+    const lastInput = page.locator('input[id="lastName"]');
+    await expect(lastInput).toBeVisible();
+    await lastInput.fill(last);
 
     // Fill in email
     const emailInput = page.locator('input[id="email"], input[type="email"]');

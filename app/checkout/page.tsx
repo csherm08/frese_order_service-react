@@ -162,7 +162,10 @@ export default function CheckoutPage() {
     const [loading, setLoading] = useState(false)
     const [clientSecret, setClientSecret] = useState<string>('')
     const [paymentIntentId, setPaymentIntentId] = useState<string>('')
-    const [customerName, setCustomerName] = useState('')
+    const [customerFirstName, setCustomerFirstName] = useState('')
+    const [customerLastName, setCustomerLastName] = useState('')
+    // Joined name — what receipts, Stripe billing, and legacy consumers use.
+    const customerName = [customerFirstName, customerLastName].map((s) => s.trim()).filter(Boolean).join(' ')
     const [customerEmail, setCustomerEmail] = useState('')
     const [customerPhone, setCustomerPhone] = useState('')
     const [orderNotes, setOrderNotes] = useState('')
@@ -172,7 +175,8 @@ export default function CheckoutPage() {
     useEffect(() => {
         const saved = loadSavedContact()
         if (!saved) return
-        setCustomerName(saved.name)
+        setCustomerFirstName(saved.firstName)
+        setCustomerLastName(saved.lastName)
         setCustomerEmail(saved.email)
         setCustomerPhone(saved.phone)
         setPrefilledContact(true)
@@ -180,7 +184,8 @@ export default function CheckoutPage() {
 
     const forgetSavedContact = () => {
         clearSavedContact()
-        setCustomerName('')
+        setCustomerFirstName('')
+        setCustomerLastName('')
         setCustomerEmail('')
         setCustomerPhone('')
         setPrefilledContact(false)
@@ -238,7 +243,13 @@ export default function CheckoutPage() {
 
     const handlePaymentSuccess = () => {
         // Remember who ordered so the next checkout on this device is prefilled.
-        saveContact({ name: customerName.trim(), email: customerEmail.trim(), phone: customerPhone.trim() })
+        saveContact({
+            name: customerName,
+            firstName: customerFirstName.trim(),
+            lastName: customerLastName.trim(),
+            email: customerEmail.trim(),
+            phone: customerPhone.trim(),
+        })
         setOrderConfirmation({
             customerName,
             customerEmail,
@@ -255,6 +266,8 @@ export default function CheckoutPage() {
     const orderData = selectedTimeslot && customerName && customerEmail && customerPhone ? {
         email: customerEmail,
         name: customerName,
+        firstName: customerFirstName.trim(),
+        lastName: customerLastName.trim(),
         phone: customerPhone,
         items: items.map(item => ({
             productId: item.productId,
@@ -413,20 +426,35 @@ export default function CheckoutPage() {
                                 <form className="space-y-4">
                                     {prefilledContact && (
                                         <p className="text-sm text-gray-600 rounded-md bg-gray-50 border border-gray-200 px-3 py-2">
-                                            Welcome back{customerName ? `, ${customerName.split(/\s+/)[0]}` : ""}! We filled in your details from last time.{" "}
+                                            Welcome back{customerFirstName ? `, ${customerFirstName}` : ""}! We filled in your details from last time.{" "}
                                             <button type="button" onClick={forgetSavedContact} className="text-[#f5991c] font-medium underline-offset-2 hover:underline">
                                                 Not you? Clear
                                             </button>
                                         </p>
                                     )}
                                     <div className="space-y-2">
-                                        <Label htmlFor="name">Full Name *</Label>
-                                        <Input
-                                            id="name"
-                                            value={customerName}
-                                            onChange={(e) => setCustomerName(e.target.value)}
-                                            required
-                                        />
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div className="space-y-2">
+                                                <Label htmlFor="firstName">First Name *</Label>
+                                                <Input
+                                                    id="firstName"
+                                                    autoComplete="given-name"
+                                                    value={customerFirstName}
+                                                    onChange={(e) => setCustomerFirstName(e.target.value)}
+                                                    required
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label htmlFor="lastName">Last Name *</Label>
+                                                <Input
+                                                    id="lastName"
+                                                    autoComplete="family-name"
+                                                    value={customerLastName}
+                                                    onChange={(e) => setCustomerLastName(e.target.value)}
+                                                    required
+                                                />
+                                            </div>
+                                        </div>
                                     </div>
                                     <div className="space-y-2">
                                         <Label htmlFor="email">Email *</Label>
