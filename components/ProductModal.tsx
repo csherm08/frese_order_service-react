@@ -76,6 +76,28 @@ export default function ProductModal({ product, open, onClose, mode }: ProductMo
         setQuantity((q) => Math.min(q, Math.max(1, maxSelectable || 1)));
     }, [open, maxSelectable]);
 
+    // Sensible defaults for required selections: preselect an option named
+    // exactly "Regular" or "Red" (e.g. Build Your Own's Sauce=Red, Sauce/
+    // Cheese Amount=Regular). Groups without such an option (wing sauces,
+    // dressings) still force an explicit choice. Runs after resets, and only
+    // fills groups the customer hasn't touched.
+    useEffect(() => {
+        if (!open || !product) return;
+        const avail = getSelectionsForCurrentSize();
+        setSelections((prev) => {
+            let changed = false;
+            const next = { ...prev };
+            Object.entries(avail).forEach(([key, opts]) => {
+                if (!next[key]) {
+                    const def = opts.find((o) => /^(regular|red)$/i.test(String(o.value || "").trim()));
+                    if (def) { next[key] = def; changed = true; }
+                }
+            });
+            return changed ? next : prev;
+        });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [open, product, selectedSize]);
+
     const hasSizes = !!(product.product_sizes && product.product_sizes.length > 0);
 
     // Resolve options for the current size (handles sized + size-less keying);
