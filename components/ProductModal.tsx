@@ -66,6 +66,7 @@ export default function ProductModal({ product, open, onClose, mode }: ProductMo
             // Reset selections and add-ons
             setSelections({});
             setAddOns({});
+            setAddOnPlacements({});
         }
     }, [open, product]);
 
@@ -163,11 +164,13 @@ export default function ProductModal({ product, open, onClose, mode }: ProductMo
             }
         });
 
-        // Format add-ons for cart item
+        // Format add-ons for cart item. Topping placements (Left/Right Half)
+        // are folded into the value text so all downstream displays carry them.
         const formattedAddOns: Record<string, Array<{ value: string; cost: number }>> = {};
         Object.keys(addOns).forEach(key => {
+            const topping = isToppingGroup(key);
             formattedAddOns[key] = addOns[key].map(addOn => ({
-                value: addOn.value,
+                value: topping ? placementLabel(addOn.value, addOnPlacements[addOn.id]) : addOn.value,
                 cost: addOn.cost
             }));
         });
@@ -260,7 +263,27 @@ export default function ProductModal({ product, open, onClose, mode }: ProductMo
                 return { ...prev, [key]: current.filter(item => item.id !== option.id) };
             }
         });
+        if (!checked) {
+            // Deselecting a topping resets its placement to Whole.
+            setAddOnPlacements(prev => {
+                if (!(option.id in prev)) return prev;
+                const next = { ...prev };
+                delete next[option.id];
+                return next;
+            });
+        }
     };
+
+    // Topping placement: Whole (default) / Left Half / Right Half, offered on
+    // add-on groups whose name says "topping" (pizza). Placement is folded into
+    // the stored value text ("Pepperoni (Left Half)") so the cart, kitchen
+    // display, printed tickets, and admin all show it with no format changes.
+    const PLACEMENTS = ["Whole", "Left Half", "Right Half"] as const;
+    type Placement = typeof PLACEMENTS[number];
+    const [addOnPlacements, setAddOnPlacements] = useState<Record<number, Placement>>({});
+    const isToppingGroup = (key: string) => /topping/i.test(key);
+    const placementLabel = (value: string, placement: Placement | undefined) =>
+        placement && placement !== "Whole" ? `${value} (${placement})` : value;
 
     const availableSelections = getSelectionsForCurrentSize();
     const availableAddOns = getAddOnsForCurrentSize();
@@ -304,6 +327,7 @@ export default function ProductModal({ product, open, onClose, mode }: ProductMo
                                     // Reset selections and add-ons when size changes
                                     setSelections({});
                                     setAddOns({});
+                                    setAddOnPlacements({});
                                 }}
                             >
                                 {product.product_sizes.map((size) => (
@@ -314,6 +338,7 @@ export default function ProductModal({ product, open, onClose, mode }: ProductMo
                                             setSelectedSize(size);
                                             setSelections({});
                                             setAddOns({});
+                                            setAddOnPlacements({});
                                         }}
                                     >
                                         <div className="flex items-center space-x-2">
@@ -372,23 +397,43 @@ export default function ProductModal({ product, open, onClose, mode }: ProductMo
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[300px] overflow-y-auto p-1">
                                         {availableAddOns[key].map(option => {
                                             const isChecked = addOns[key]?.some(item => item.id === option.id) || false;
+                                            const topping = isToppingGroup(key);
+                                            const placement = addOnPlacements[option.id] || "Whole";
                                             return (
-                                                <div key={option.id} className="flex items-center space-x-2 border rounded-md p-2 hover:bg-accent">
-                                                    <Checkbox
-                                                        id={`addon-${option.id}`}
-                                                        checked={isChecked}
-                                                        onCheckedChange={(checked) => handleAddOnToggle(key, option, checked as boolean)}
-                                                    />
-                                                    <Label htmlFor={`addon-${option.id}`} className="cursor-pointer text-sm flex-1 min-w-0">
-                                                        <div className="flex items-center justify-between gap-1">
-                                                            <span className="truncate">{option.value}</span>
-                                                            {option.cost > 0 && (
-                                                                <span className="text-xs font-semibold whitespace-nowrap">
-                                                                    +{formatCurrency(option.cost)}
-                                                                </span>
-                                                            )}
+                                                <div key={option.id} className="border rounded-md p-2 hover:bg-accent">
+                                                    <div className="flex items-center space-x-2">
+                                                        <Checkbox
+                                                            id={`addon-${option.id}`}
+                                                            checked={isChecked}
+                                                            onCheckedChange={(checked) => handleAddOnToggle(key, option, checked as boolean)}
+                                                        />
+                                                        <Label htmlFor={`addon-${option.id}`} className="cursor-pointer text-sm flex-1 min-w-0">
+                                                            <div className="flex items-center justify-between gap-1">
+                                                                <span className="truncate">{option.value}</span>
+                                                                {option.cost > 0 && (
+                                                                    <span className="text-xs font-semibold whitespace-nowrap">
+                                                                        +{formatCurrency(option.cost)}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        </Label>
+                                                    </div>
+                                                    {topping && isChecked && (
+                                                        <div className="flex gap-1 mt-2 ml-6" role="group" aria-label={`${option.value} placement`}>
+                                                            {PLACEMENTS.map((p) => (
+                                                                <button
+                                                                    key={p}
+                                                                    type="button"
+                                                                    onClick={() => setAddOnPlacements(prev => ({ ...prev, [option.id]: p }))}
+                                                                    className={`px-2 py-0.5 text-xs rounded-full border transition-colors ${placement === p
+                                                                        ? "bg-[#f5991c] border-[#f5991c] text-white font-semibold"
+                                                                        : "border-gray-300 text-gray-600 hover:border-[#f5991c]"}`}
+                                                                >
+                                                                    {p === "Left Half" ? "Left ½" : p === "Right Half" ? "Right ½" : p}
+                                                                </button>
+                                                            ))}
                                                         </div>
-                                                    </Label>
+                                                    )}
                                                 </div>
                                             );
                                         })}
