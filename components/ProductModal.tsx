@@ -283,7 +283,7 @@ export default function ProductModal({ product, open, onClose, mode }: ProductMo
     const [addOnPlacements, setAddOnPlacements] = useState<Record<number, Placement>>({});
     // Pizza-only: subs also have a "Toppings" add-on group, where halves make
     // no sense — gate on the product being a pizza/pie.
-    const isToppingGroup = (key: string) => /topping/i.test(key) && /pizza|pie/i.test(product.title || "");
+    const isToppingGroup = (key: string) => /topping/i.test(key) && /pizza|pie|build your own/i.test(product.title || "");
     const placementLabel = (value: string, placement: Placement | undefined) =>
         placement && placement !== "Whole" ? `${value} (${placement})` : value;
     // Pricing: the configured cost is the WHOLE-pizza price; halves charge 50%.
