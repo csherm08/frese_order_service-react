@@ -124,11 +124,11 @@ export default function ProductModal({ product, open, onClose, mode }: ProductMo
             }
         });
 
-        // Add add-on costs
-        Object.values(addOns).forEach(addOnArray => {
+        // Add add-on costs (topping halves charge 50% of the whole price)
+        Object.entries(addOns).forEach(([key, addOnArray]) => {
             addOnArray.forEach(addOn => {
                 if (addOn.cost) {
-                    basePrice += addOn.cost;
+                    basePrice += effectiveAddOnCost(key, addOn);
                 }
             });
         });
@@ -171,7 +171,7 @@ export default function ProductModal({ product, open, onClose, mode }: ProductMo
             const topping = isToppingGroup(key);
             formattedAddOns[key] = addOns[key].map(addOn => ({
                 value: topping ? placementLabel(addOn.value, addOnPlacements[addOn.id]) : addOn.value,
-                cost: addOn.cost
+                cost: effectiveAddOnCost(key, addOn)
             }));
         });
 
@@ -281,9 +281,16 @@ export default function ProductModal({ product, open, onClose, mode }: ProductMo
     const PLACEMENTS = ["Whole", "Left Half", "Right Half"] as const;
     type Placement = typeof PLACEMENTS[number];
     const [addOnPlacements, setAddOnPlacements] = useState<Record<number, Placement>>({});
-    const isToppingGroup = (key: string) => /topping/i.test(key);
+    // Pizza-only: subs also have a "Toppings" add-on group, where halves make
+    // no sense — gate on the product being a pizza/pie.
+    const isToppingGroup = (key: string) => /topping/i.test(key) && /pizza|pie/i.test(product.title || "");
     const placementLabel = (value: string, placement: Placement | undefined) =>
         placement && placement !== "Whole" ? `${value} (${placement})` : value;
+    // Pricing: the configured cost is the WHOLE-pizza price; halves charge 50%.
+    const placementFactor = (placement: Placement | undefined) =>
+        placement === "Left Half" || placement === "Right Half" ? 0.5 : 1;
+    const effectiveAddOnCost = (key: string, addOn: { id: number; cost: number }) =>
+        (addOn.cost || 0) * (isToppingGroup(key) ? placementFactor(addOnPlacements[addOn.id]) : 1);
 
     const availableSelections = getSelectionsForCurrentSize();
     const availableAddOns = getAddOnsForCurrentSize();
@@ -419,7 +426,7 @@ export default function ProductModal({ product, open, onClose, mode }: ProductMo
                                                         </Label>
                                                     </div>
                                                     {topping && isChecked && (
-                                                        <div className="flex gap-1 mt-2 ml-6" role="group" aria-label={`${option.value} placement`}>
+                                                        <div className="flex items-center gap-1 mt-2 ml-6 flex-wrap" role="group" aria-label={`${option.value} placement`}>
                                                             {PLACEMENTS.map((p) => (
                                                                 <button
                                                                     key={p}
@@ -432,6 +439,9 @@ export default function ProductModal({ product, open, onClose, mode }: ProductMo
                                                                     {p === "Left Half" ? "Left ½" : p === "Right Half" ? "Right ½" : p}
                                                                 </button>
                                                             ))}
+                                                            <span className="text-xs text-gray-500 ml-1">
+                                                                = {formatCurrency(effectiveAddOnCost(key, option))}
+                                                            </span>
                                                         </div>
                                                     )}
                                                 </div>
