@@ -41,7 +41,12 @@ export function isPerPersonMenu(typeName: string): boolean {
  */
 export function parseMinQty(description?: string | null): number {
     if (!description) return 1;
-    const m = description.match(/\bmin\.?\s*(\d+)/i);
+    // "Min 50", "min. 10", "Min 50 guests"
+    let m = description.match(/\bmin\.?\s*(\d+)/i);
+    // "10 person minimum", "50 guest minimum", "10 minimum" — number first.
+    // Requires the full word "minimum" so "10 min" (minutes) never matches.
+    if (!m) m = description.match(/\b(\d+)\s*(?:person|people|guest)s?\s*minimum\b/i)
+        || description.match(/\b(\d+)\s*minimum\b/i);
     const n = m ? parseInt(m[1], 10) : NaN;
     return Number.isFinite(n) && n > 0 ? n : 1;
 }
