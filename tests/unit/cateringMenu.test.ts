@@ -51,6 +51,17 @@ describe('parseMinQty', () => {
         expect(parseMinQty('Min 50. Hors d\'oeuvres, 3 salads')).toBe(50)
         expect(parseMinQty('Min. 75 guests')).toBe(75)
     })
+    it('reads number-first "N person minimum" phrasings', () => {
+        expect(parseMinQty('Hot hors d\'oeuvre. 10 person minimum.')).toBe(10)
+        expect(parseMinQty('3 per person. 10 person minimum.')).toBe(10) // nearby numbers don't confuse it
+        expect(parseMinQty('50 guest minimum')).toBe(50)
+        expect(parseMinQty('25 people minimum')).toBe(25)
+        expect(parseMinQty('12 minimum')).toBe(12)
+    })
+    it('never mistakes minutes for a minimum', () => {
+        expect(parseMinQty('Bakes in 10 min')).toBe(1)
+        expect(parseMinQty('Reheat 15 minutes at 350')).toBe(1)
+    })
     it('defaults to 1 when no minimum is stated or missing', () => {
         expect(parseMinQty('Pulled Pork, served by the tray')).toBe(1)
         expect(parseMinQty('')).toBe(1)
